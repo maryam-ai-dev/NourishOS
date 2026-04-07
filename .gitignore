@@ -1,0 +1,75 @@
+# === Project files ===
+CLAUDE.md
+sprint-plan.md
+
+# === Java / Spring Boot ===
+*.class
+*.jar
+*.war
+*.ear
+*.log
+target/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.gradle/
+out/
+*.iml
+*.ipr
+*.iws
+.idea/
+.settings/
+.project
+.classpath
+bin/
+hs_err_pid*
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.env
+.python-version
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# === Flutter / Dart ===
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.g.dart
+*.freezed.dart
+.pub-cache/
+.pub/
+pubspec.lock
+
+# === Docker ===
+docker-compose.override.yml
+.docker/
+
+# === IDE ===
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# === Secrets ===
+*.pem
+*.key
+credentials.json
+.env.*
