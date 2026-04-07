@@ -4,7 +4,7 @@ A household food intelligence system that helps homes reduce waste, save money, 
 
 ## What it does
 
-NourishOS models how food moves through the household over time -- what comes in, what gets used, what gets wasted, and what should be planned next.
+NourishOS models how food moves through the household over time - what comes in, what gets used, what gets wasted, and what should be planned next.
 
 ### Core -- Household Food Intelligence
 
