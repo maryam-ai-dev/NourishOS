@@ -6,14 +6,14 @@ A household food intelligence system that helps homes reduce waste, save money, 
 
 NourishOS models how food moves through the household over time - what comes in, what gets used, what gets wasted, and what should be planned next.
 
-### Core -- Household Food Intelligence
+### Core - Household Food Intelligence
 
 - Weekly meal planning across household members with dietary fit
 - Inventory and stock flow tracking with explicit par levels
 - Waste pattern detection and reduction
 - Food-flow-aware replenishment with waste-adjusted quantities
 
-### Secondary -- Smart Kitchen Coordination
+### Secondary - Smart Kitchen Coordination
 
 - Execution planning and task delegation
 - Machine vs user step assignment
