@@ -5,8 +5,11 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.nourishos.authority.domain.Household;
 import com.nourishos.authority.domain.HouseholdMember;
+import com.nourishos.authority.domain.MemberPreferenceProfile;
 import com.nourishos.authority.dto.CreateMemberRequest;
 import com.nourishos.authority.dto.UpdateMemberRequest;
 import com.nourishos.authority.repository.HouseholdMemberRepository;
@@ -19,6 +22,7 @@ public class HouseholdMemberService {
     private final HouseholdMemberRepository memberRepository;
     private final HouseholdService householdService;
 
+    @Transactional
     public HouseholdMember create(UUID householdId, CreateMemberRequest request) {
         Household household = householdService.findById(householdId);
         HouseholdMember member = new HouseholdMember();
@@ -27,6 +31,11 @@ public class HouseholdMemberService {
         member.setAgeGroup(request.getAgeGroup());
         member.setEffortSensitivity(request.getEffortSensitivity());
         member.setParticipatesInMealPlanning(request.isParticipatesInMealPlanning());
+
+        MemberPreferenceProfile profile = new MemberPreferenceProfile();
+        profile.setMember(member);
+        member.setPreferenceProfile(profile);
+
         return memberRepository.save(member);
     }
 
