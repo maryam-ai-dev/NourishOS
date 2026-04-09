@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: NourishOS Authority API
+  description: Spring Boot authority service — domain data, persistence, state machines.
+  version: 0.1.0
+
+paths:
+  /households:
+    post:
+      summary: Create household
+      operationId: createHousehold
+      responses:
+        '201':
+          description: Household created
+
+  /planning/meal-requests:
+    post:
+      summary: Submit meal request
+      operationId: createMealRequest
+      responses:
+        '201':
+          description: Meal request created
+
+  /meal-catalog:
+    get:
+      summary: List all MealOptions (Spring-owned, FastAPI calls this)
+      operationId: getMealCatalog
+      responses:
+        '200':
+          description: Meal catalog
+
+components:
+  schemas:
+    ExecutionStep:
+      $ref: 'execution-step-schema.yaml#/components/schemas/ExecutionStep'

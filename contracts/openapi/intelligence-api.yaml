@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: NourishOS Intelligence API
+  description: FastAPI intelligence service — ranking, planning, food flow analysis.
+  version: 0.1.0
+
+paths:
+  /planning/weekly:
+    post:
+      summary: Propose weekly plan
+      operationId: proposeWeeklyPlan
+      responses:
+        '200':
+          description: Weekly plan proposal
+
+  /recommendation/rank:
+    post:
+      summary: Rank meals for household
+      operationId: rankMeals
+      responses:
+        '200':
+          description: Ranked meal candidates
+
+  /foodflow/analyze:
+    post:
+      summary: Full food flow analysis
+      operationId: analyzeFoodFlow
+      responses:
+        '200':
+          description: Food flow analysis
+
+components:
+  schemas:
+    ExecutionStep:
+      $ref: 'execution-step-schema.yaml#/components/schemas/ExecutionStep'

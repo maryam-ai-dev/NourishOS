@@ -1,0 +1,80 @@
+openapi: 3.0.3
+info:
+  title: NourishOS Execution Step Schema
+  description: >
+    Shared execution step contract. Spring Boot persists this shape,
+    FastAPI proposes steps conforming to it, and the robotics simulation
+    reads and executes steps in this shape.
+  version: 1.0.0
+
+paths: {}
+
+components:
+  schemas:
+    ExecutionStep:
+      type: object
+      required:
+        - id
+        - planId
+        - stepOrder
+        - actionType
+        - assignedTo
+        - status
+        - estimatedDurationSeconds
+      properties:
+        id:
+          type: string
+          format: uuid
+        planId:
+          type: string
+          format: uuid
+        stepOrder:
+          type: integer
+          minimum: 0
+        actionType:
+          type: string
+          enum:
+            - DISPENSE_DRY
+            - DISPENSE_LIQUID
+            - HEAT
+            - STIR
+            - LOAD_MODULE
+            - MOVE_MODULE
+            - USER_LOAD_TRAY
+            - USER_CONFIRM
+            - USER_REMOVE_VESSEL
+        assignedTo:
+          type: string
+          enum:
+            - MACHINE
+            - USER
+        status:
+          type: string
+          enum:
+            - PENDING
+            - IN_PROGRESS
+            - COMPLETE
+            - FAILED
+        estimatedDurationSeconds:
+          type: integer
+          minimum: 0
+        ingredientRef:
+          $ref: '#/components/schemas/StepIngredientRef'
+          nullable: true
+
+    StepIngredientRef:
+      type: object
+      required:
+        - ingredientId
+        - quantity
+        - unit
+      properties:
+        ingredientId:
+          type: string
+          format: uuid
+        quantity:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+        unit:
+          type: string
