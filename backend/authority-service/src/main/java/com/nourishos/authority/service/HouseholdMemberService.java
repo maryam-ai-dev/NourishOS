@@ -44,6 +44,12 @@ public class HouseholdMemberService {
         return memberRepository.findByHouseholdId(householdId);
     }
 
+    public HouseholdMember findMember(UUID householdId, UUID memberId) {
+        householdService.findById(householdId);
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+    }
+
     public HouseholdMember update(UUID householdId, UUID memberId, UpdateMemberRequest request) {
         householdService.findById(householdId);
         HouseholdMember member = memberRepository.findById(memberId)

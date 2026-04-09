@@ -1,0 +1,15 @@
+package com.nourishos.authority.dto;
+
+import java.util.List;
+
+import com.nourishos.authority.domain.DietaryRule;
+import lombok.Data;
+
+@Data
+public class UpdatePreferencesRequest {
+
+    private List<DietaryRule> dietaryRules;
+    private List<String> dislikedIngredients;
+    private Integer proteinGoalGrams;
+    private List<String> preferredMealTypes;
+}
