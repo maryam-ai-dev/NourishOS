@@ -13,6 +13,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nourishos.authority.domain.DietaryRule;
 import com.nourishos.authority.domain.MemberPreferenceProfile;
+import com.nourishos.authority.domain.NutritionGoal;
 import com.nourishos.authority.dto.UpdatePreferencesRequest;
 import com.nourishos.authority.repository.MemberPreferenceProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,10 @@ public class PreferenceProfileService {
         if (request.getPreferredMealTypes() != null) {
             profile.setPreferredMealTypes(toJson(request.getPreferredMealTypes()));
         }
+        if (request.getNutritionGoals() != null) {
+            validateNutritionGoalUnits(request.getNutritionGoals());
+            profile.setNutritionGoals(toJson(request.getNutritionGoals()));
+        }
 
         return profileRepository.save(profile);
     }
@@ -55,6 +60,14 @@ public class PreferenceProfileService {
             map.put(rule.getRuleType().name(), rule);
         }
         return new ArrayList<>(map.values());
+    }
+
+    private void validateNutritionGoalUnits(List<NutritionGoal> goals) {
+        for (NutritionGoal goal : goals) {
+            if (!goal.hasValidUnit()) {
+                throw new InvalidNutritionGoalUnitException(goal.getUnit());
+            }
+        }
     }
 
     private String toJson(Object value) {

@@ -14,6 +14,7 @@ public class PreferenceProfileResponse {
     private String dietaryRestrictions;
     private Integer proteinGoalGrams;
     private String preferredMealTypes;
+    private String nutritionGoals;
 
     public static PreferenceProfileResponse from(MemberPreferenceProfile profile) {
         PreferenceProfileResponse r = new PreferenceProfileResponse();
@@ -23,6 +24,7 @@ public class PreferenceProfileResponse {
         r.setDietaryRestrictions(profile.getDietaryRestrictions());
         r.setProteinGoalGrams(profile.getProteinGoalGrams());
         r.setPreferredMealTypes(profile.getPreferredMealTypes());
+        r.setNutritionGoals(profile.getNutritionGoals());
         return r;
     }
 }

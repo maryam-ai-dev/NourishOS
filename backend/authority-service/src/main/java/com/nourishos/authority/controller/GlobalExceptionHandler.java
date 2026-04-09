@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.nourishos.authority.service.HouseholdNotFoundException;
+import com.nourishos.authority.service.InvalidNutritionGoalUnitException;
 import com.nourishos.authority.service.MemberNotFoundException;
 
 @RestControllerAdvice
@@ -29,6 +30,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({HouseholdNotFoundException.class, MemberNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidNutritionGoalUnitException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleInvalidUnit(InvalidNutritionGoalUnitException ex) {
         return Map.of("error", ex.getMessage());
     }
 }
