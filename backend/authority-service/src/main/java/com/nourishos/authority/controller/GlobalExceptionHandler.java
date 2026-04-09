@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.nourishos.authority.service.HouseholdNotFoundException;
 import com.nourishos.authority.service.InvalidNutritionGoalUnitException;
 import com.nourishos.authority.service.MemberNotFoundException;
+import com.nourishos.authority.service.inventory.NegativeQuantityException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -36,6 +37,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidNutritionGoalUnitException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> handleInvalidUnit(InvalidNutritionGoalUnitException ex) {
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(NegativeQuantityException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public Map<String, String> handleNegativeQuantity(NegativeQuantityException ex) {
         return Map.of("error", ex.getMessage());
     }
 }
