@@ -14,6 +14,7 @@ public class HouseholdResponse {
     private String name;
     private BigDecimal weeklyBudgetLimit;
     private Instant createdAt;
+    private HouseholdSettingsResponse settings;
 
     public static HouseholdResponse from(Household household) {
         HouseholdResponse response = new HouseholdResponse();
@@ -21,6 +22,9 @@ public class HouseholdResponse {
         response.setName(household.getName());
         response.setWeeklyBudgetLimit(household.getWeeklyBudgetLimit());
         response.setCreatedAt(household.getCreatedAt());
+        if (household.getSettings() != null) {
+            response.setSettings(HouseholdSettingsResponse.from(household.getSettings()));
+        }
         return response;
     }
 }
