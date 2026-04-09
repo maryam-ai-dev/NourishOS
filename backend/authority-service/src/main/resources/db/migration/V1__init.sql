@@ -1,0 +1,3 @@
+-- V1__init.sql
+-- Baseline migration for NourishOS authority-service.
+-- Intentionally empty — schema tables begin in V2.
