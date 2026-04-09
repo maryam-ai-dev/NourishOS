@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.nourishos.authority.service.HouseholdNotFoundException;
 import com.nourishos.authority.service.InvalidNutritionGoalUnitException;
 import com.nourishos.authority.service.MemberNotFoundException;
+import com.nourishos.authority.service.inventory.InvalidParLevelException;
 import com.nourishos.authority.service.inventory.NegativeQuantityException;
+import com.nourishos.authority.service.inventory.ParLevelNotFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -28,9 +30,16 @@ public class GlobalExceptionHandler {
         return Map.of("error", "validation_failed", "fields", errors);
     }
 
-    @ExceptionHandler({HouseholdNotFoundException.class, MemberNotFoundException.class})
+    @ExceptionHandler({HouseholdNotFoundException.class, MemberNotFoundException.class,
+            ParLevelNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidParLevelException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleInvalidParLevel(InvalidParLevelException ex) {
         return Map.of("error", ex.getMessage());
     }
 
