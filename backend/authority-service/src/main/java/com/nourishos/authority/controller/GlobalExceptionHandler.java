@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.nourishos.authority.service.HouseholdNotFoundException;
+import com.nourishos.authority.service.MemberNotFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -25,9 +26,9 @@ public class GlobalExceptionHandler {
         return Map.of("error", "validation_failed", "fields", errors);
     }
 
-    @ExceptionHandler(HouseholdNotFoundException.class)
+    @ExceptionHandler({HouseholdNotFoundException.class, MemberNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleNotFound(HouseholdNotFoundException ex) {
+    public Map<String, String> handleNotFound(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
     }
 }
