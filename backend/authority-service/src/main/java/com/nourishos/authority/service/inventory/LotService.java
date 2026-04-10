@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 import com.nourishos.authority.domain.AdjustmentType;
 import com.nourishos.authority.domain.Ingredient;
 import com.nourishos.authority.domain.IngredientLot;
@@ -53,5 +55,22 @@ public class LotService {
                 "Initial purchase");
 
         return saved;
+    }
+
+    @Transactional
+    public IngredientLot updateQuantity(UUID lotId, BigDecimal newQuantity, String reason) {
+        IngredientLot lot = lotRepository.findById(lotId)
+                .orElseThrow(() -> new IllegalArgumentException("Lot not found: " + lotId));
+
+        BigDecimal delta = newQuantity.subtract(lot.getQuantity());
+
+        adjustmentService.record(
+                lotId,
+                AdjustmentType.CORRECTION,
+                delta,
+                lot.getUnit(),
+                reason != null ? reason : "Manual quantity correction");
+
+        return lotRepository.findById(lotId).orElseThrow();
     }
 }
