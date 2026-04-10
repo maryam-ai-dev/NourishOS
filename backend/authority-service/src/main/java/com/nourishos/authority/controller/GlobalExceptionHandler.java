@@ -19,6 +19,7 @@ import com.nourishos.authority.service.inventory.LotAlreadyOpenException;
 import com.nourishos.authority.service.inventory.LotNotActiveException;
 import com.nourishos.authority.service.inventory.NegativeQuantityException;
 import com.nourishos.authority.service.planning.DuplicateMealRequestException;
+import com.nourishos.authority.service.planning.InvalidMealSelectionException;
 import com.nourishos.authority.service.planning.InvalidServingsException;
 import com.nourishos.authority.service.planning.InvalidSustainabilityScoreException;
 import com.nourishos.authority.service.planning.MealOptionNotFoundException;
@@ -60,7 +61,8 @@ public class GlobalExceptionHandler {
         return Map.of("error", ex.getMessage());
     }
 
-    @ExceptionHandler({NegativeQuantityException.class, LotNotActiveException.class})
+    @ExceptionHandler({NegativeQuantityException.class, LotNotActiveException.class,
+            InvalidMealSelectionException.class})
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public Map<String, String> handleUnprocessable(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
