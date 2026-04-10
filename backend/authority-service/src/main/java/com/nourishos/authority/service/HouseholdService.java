@@ -8,9 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.nourishos.authority.domain.Household;
 import com.nourishos.authority.domain.HouseholdSettings;
+import com.nourishos.authority.domain.PolicySet;
 import com.nourishos.authority.dto.CreateHouseholdRequest;
 import com.nourishos.authority.dto.UpdateHouseholdRequest;
 import com.nourishos.authority.repository.HouseholdRepository;
+import com.nourishos.authority.repository.PolicySetRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class HouseholdService {
 
     private final HouseholdRepository householdRepository;
+    private final PolicySetRepository policySetRepository;
 
     @Transactional
     public Household create(CreateHouseholdRequest request) {
@@ -30,7 +33,13 @@ public class HouseholdService {
         settings.setWeeklyBudgetLimit(request.getWeeklyBudgetLimit());
         household.setSettings(settings);
 
-        return householdRepository.save(household);
+        Household saved = householdRepository.save(household);
+
+        PolicySet policySet = new PolicySet();
+        policySet.setHousehold(saved);
+        policySetRepository.save(policySet);
+
+        return saved;
     }
 
     public Household findById(UUID id) {
