@@ -68,3 +68,58 @@ class TestNetFlow:
         adjustments = [_adj(ing, "PURCHASE", 100)]
         flows = compute_net_flow(adjustments)
         assert isinstance(flows, dict)
+
+
+class TestMismatchFlags:
+    def test_over_bought_flag(self):
+        """netFlow > 0 AND avgWeeklyUsage < 20% of purchased → overBought."""
+        ing = uuid4()
+        adjustments = [
+            _adj(ing, "PURCHASE", 1000),
+            _adj(ing, "CONSUMPTION", 50),
+        ]
+        summary = analyze_stock_flow(
+            adjustments,
+            avg_weekly_usage={ing: Decimal("50")},  # 5% of 1000
+        )
+        assert ing in summary.over_bought_ingredients
+        assert summary.net_flow_by_ingredient[ing] > 0
+
+    def test_not_over_bought_when_usage_high(self):
+        ing = uuid4()
+        adjustments = [
+            _adj(ing, "PURCHASE", 1000),
+            _adj(ing, "CONSUMPTION", 500),
+        ]
+        summary = analyze_stock_flow(
+            adjustments,
+            avg_weekly_usage={ing: Decimal("250")},  # 25% of 1000
+        )
+        assert ing not in summary.over_bought_ingredients
+
+    def test_under_supplied_flag(self):
+        """Lot quantity reaches 0 → underSupplied."""
+        ing = uuid4()
+        adjustments = [
+            _adj(ing, "PURCHASE", 200),
+            _adj(ing, "CONSUMPTION", 250),  # goes below 0
+        ]
+        summary = analyze_stock_flow(adjustments)
+        assert ing in summary.under_supplied_ingredients
+
+    def test_not_under_supplied_when_stock_remains(self):
+        ing = uuid4()
+        adjustments = [
+            _adj(ing, "PURCHASE", 500),
+            _adj(ing, "CONSUMPTION", 100),
+        ]
+        summary = analyze_stock_flow(adjustments)
+        assert ing not in summary.under_supplied_ingredients
+
+    def test_summary_structure(self):
+        ing = uuid4()
+        adjustments = [_adj(ing, "PURCHASE", 100)]
+        summary = analyze_stock_flow(adjustments)
+        assert hasattr(summary, "net_flow_by_ingredient")
+        assert hasattr(summary, "over_bought_ingredients")
+        assert hasattr(summary, "under_supplied_ingredients")
