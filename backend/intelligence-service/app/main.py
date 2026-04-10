@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.api.recommendation import router as recommendation_router
 from app.api.planning import router as planning_router
+from app.api.foodflow import router as foodflow_router
 
 app = FastAPI(
     title="NourishOS Intelligence Service",
@@ -10,6 +11,7 @@ app = FastAPI(
 
 app.include_router(recommendation_router)
 app.include_router(planning_router)
+app.include_router(foodflow_router)
 
 
 @app.get("/health")
