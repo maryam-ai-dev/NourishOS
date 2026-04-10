@@ -1,10 +1,12 @@
 package com.nourishos.authority.controller;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,17 +14,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nourishos.authority.domain.ExecutionPlan;
+import com.nourishos.authority.domain.ExecutionStep;
+import com.nourishos.authority.domain.InterventionRequest;
 import com.nourishos.authority.domain.ExecutionStatus;
 import com.nourishos.authority.domain.MealPlan;
 import com.nourishos.authority.domain.MealRequest;
 import com.nourishos.authority.domain.MealRequestStatus;
+import com.nourishos.authority.dto.ExecutionResponse;
 import com.nourishos.authority.repository.ExecutionPlanRepository;
+import com.nourishos.authority.repository.ExecutionStepRepository;
+import com.nourishos.authority.repository.InterventionRequestRepository;
 import com.nourishos.authority.repository.MealRequestRepository;
 import com.nourishos.authority.service.execution.ExecutionSessionCache;
 import com.nourishos.authority.service.execution.InterventionStateCache;
 import com.nourishos.authority.service.planning.MealPlanService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -31,10 +39,13 @@ import lombok.RequiredArgsConstructor;
 public class ExecutionController {
 
     private final ExecutionPlanRepository executionPlanRepository;
+    private final ExecutionStepRepository stepRepository;
+    private final InterventionRequestRepository interventionRepository;
     private final MealPlanService mealPlanService;
     private final MealRequestRepository mealRequestRepository;
     private final ExecutionSessionCache sessionCache;
     private final InterventionStateCache interventionCache;
+    private final ObjectMapper objectMapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -89,5 +100,43 @@ public class ExecutionController {
         sessionCache.deleteSession(id);
 
         return plan;
+    }
+
+    @GetMapping("/{id}")
+    @Transactional(readOnly = true)
+    public ExecutionResponse get(@PathVariable UUID id) {
+        ExecutionPlan plan = executionPlanRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("ExecutionPlan not found: " + id));
+        List<ExecutionStep> steps = stepRepository.findByPlanIdOrderByStepOrder(id);
+        List<InterventionRequest> interventions = interventionRepository.findByPlanId(id);
+
+        ExecutionResponse response = ExecutionResponse.from(plan, steps, interventions);
+
+        // Redis enrichment
+        String sessionJson = sessionCache.getSession(id);
+        if (sessionJson != null) {
+            try {
+                var sessionData = objectMapper.readValue(sessionJson,
+                        ExecutionSessionCache.SessionData.class);
+                ExecutionResponse.SessionState ss = new ExecutionResponse.SessionState();
+                ss.setCurrentStepIndex(sessionData.stepIndex());
+                ss.setStatus(sessionData.status());
+                response.setSessionState(ss);
+            } catch (JsonProcessingException ignored) {}
+        }
+
+        String interventionJson = interventionCache.getIntervention(id);
+        if (interventionJson != null) {
+            try {
+                var intData = objectMapper.readValue(interventionJson,
+                        InterventionStateCache.InterventionData.class);
+                ExecutionResponse.ActiveIntervention ai = new ExecutionResponse.ActiveIntervention();
+                ai.setInterventionId(intData.interventionId());
+                ai.setType(intData.interventionType());
+                response.setActiveIntervention(ai);
+            } catch (JsonProcessingException ignored) {}
+        }
+
+        return response;
     }
 }
