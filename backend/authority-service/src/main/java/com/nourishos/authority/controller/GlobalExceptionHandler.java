@@ -22,6 +22,7 @@ import com.nourishos.authority.service.planning.DuplicateMealRequestException;
 import com.nourishos.authority.service.planning.InvalidServingsException;
 import com.nourishos.authority.service.planning.InvalidSustainabilityScoreException;
 import com.nourishos.authority.service.planning.MealOptionNotFoundException;
+import com.nourishos.authority.service.planning.MealPlanNotFoundException;
 import com.nourishos.authority.service.inventory.ParLevelNotFoundException;
 
 @RestControllerAdvice
@@ -39,7 +40,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({HouseholdNotFoundException.class, MemberNotFoundException.class,
-            ParLevelNotFoundException.class, MealOptionNotFoundException.class})
+            ParLevelNotFoundException.class, MealOptionNotFoundException.class,
+            MealPlanNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
