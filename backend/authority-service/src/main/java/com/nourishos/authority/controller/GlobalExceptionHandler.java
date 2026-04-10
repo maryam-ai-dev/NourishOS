@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({NegativeQuantityException.class, LotNotActiveException.class,
-            InvalidMealSelectionException.class})
+            InvalidMealSelectionException.class, IllegalStateException.class})
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public Map<String, String> handleUnprocessable(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
