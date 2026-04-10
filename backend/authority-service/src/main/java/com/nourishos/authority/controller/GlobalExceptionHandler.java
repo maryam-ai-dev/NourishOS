@@ -48,9 +48,10 @@ public class GlobalExceptionHandler {
         return Map.of("error", ex.getMessage());
     }
 
-    @ExceptionHandler({InvalidNutritionGoalUnitException.class, InvalidSustainabilityScoreException.class})
+    @ExceptionHandler({InvalidNutritionGoalUnitException.class, InvalidSustainabilityScoreException.class,
+            IllegalArgumentException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleInvalidUnit(RuntimeException ex) {
+    public Map<String, String> handleBadRequest(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
     }
 
