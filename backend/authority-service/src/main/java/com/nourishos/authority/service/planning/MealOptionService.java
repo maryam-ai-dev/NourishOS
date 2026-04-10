@@ -34,7 +34,7 @@ public class MealOptionService {
 
     public MealOption findById(UUID id) {
         return mealOptionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("MealOption not found: " + id));
+                .orElseThrow(() -> new MealOptionNotFoundException(id));
     }
 
     public List<MealOption> findAll() {
