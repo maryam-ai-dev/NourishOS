@@ -128,3 +128,50 @@ def get_usage_records(household_id: str) -> List[IngredientUsageRecord]:
     if isinstance(data, list):
         return [IngredientUsageRecord.model_validate(r) for r in data]
     return [IngredientUsageRecord.model_validate(data)]
+
+
+# --- Sprint 9.3: Meal Catalog ---
+
+class IngredientRef(BaseModel):
+    ingredient_id: UUID = Field(alias="ingredientId")
+    base_quantity: Decimal = Field(alias="baseQuantity")
+    unit: str
+    optional: bool = False
+    substitutable: bool = True
+
+    model_config = {"populate_by_name": True}
+
+
+class MealOption(BaseModel):
+    id: UUID
+    name: str
+    meal_type: str = Field(alias="mealType")
+    estimated_protein_grams: Optional[Decimal] = Field(None, alias="estimatedProteinGrams")
+    estimated_calories: Optional[Decimal] = Field(None, alias="estimatedCalories")
+    prep_time_minutes: Optional[int] = Field(None, alias="prepTimeMinutes")
+    sustainability_score: Optional[Decimal] = Field(None, alias="sustainabilityScore")
+    ingredient_refs: List[IngredientRef] = Field(default_factory=list, alias="ingredientRefs")
+
+    model_config = {"populate_by_name": True}
+
+    @classmethod
+    def _parse_refs(cls, v):
+        if isinstance(v, str):
+            import json
+            return [IngredientRef.model_validate(r) for r in json.loads(v)]
+        if isinstance(v, list):
+            return [IngredientRef.model_validate(r) if isinstance(r, dict) else r for r in v]
+        return v
+
+
+def get_meal_catalog() -> List[MealOption]:
+    resp = _get_client().get("/meal-catalog")
+    data = _handle_response(resp)
+    results = []
+    for item in data:
+        # Handle ingredientRefs being a JSON string from Spring
+        if isinstance(item.get("ingredientRefs"), str):
+            import json
+            item["ingredientRefs"] = json.loads(item["ingredientRefs"])
+        results.append(MealOption.model_validate(item))
+    return results
