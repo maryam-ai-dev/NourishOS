@@ -15,4 +15,6 @@ public interface WasteEventRepository extends JpaRepository<WasteEvent, UUID> {
     List<WasteEvent> findByIngredientId(UUID ingredientId);
 
     List<WasteEvent> findByIngredientIdAndWastedAtAfter(UUID ingredientId, Instant after);
+
+    List<WasteEvent> findByHouseholdIdAndWastedAtBetween(UUID householdId, Instant start, Instant end);
 }

@@ -39,4 +39,7 @@ public class Ingredient {
     @Enumerated(EnumType.STRING)
     @Column(name = "perishability_class", nullable = false)
     private PerishabilityClass perishabilityClass;
+
+    @Column(name = "estimated_cost_per_unit")
+    private java.math.BigDecimal estimatedCostPerUnit;
 }
