@@ -178,4 +178,62 @@ class LotAllocationServiceTest {
         assertEquals(1, result.size());
         assertEquals(withExpiry.getId(), result.get(0).getLotId());
     }
+
+    @Test
+    void lotInKgRequestInGramsConvertsCorrectly() {
+        UUID ingredientId = UUID.randomUUID();
+        IngredientLot lotInKg = makeLot(new BigDecimal("2"), "kg", false,
+                Instant.now().plus(5, ChronoUnit.DAYS));
+
+        when(lotRepository.findByIngredientIdAndStatus(ingredientId, LotStatus.ACTIVE))
+                .thenReturn(List.of(lotInKg));
+        when(unitConversionService.convert(new BigDecimal("2"), "kg", "g"))
+                .thenReturn(new BigDecimal("2000"));
+
+        List<LotAllocation> result = service.allocate(
+                ingredientId, UUID.randomUUID(), new BigDecimal("500"), "g");
+
+        assertEquals(1, result.size());
+        assertEquals(0, new BigDecimal("500").compareTo(result.get(0).getQuantityFromThisLot()));
+        assertEquals("g", result.get(0).getUnit());
+    }
+
+    @Test
+    void allReturnedAllocationsUseRequestedUnit() {
+        UUID ingredientId = UUID.randomUUID();
+        IngredientLot lotInKg = makeLot(new BigDecimal("1"), "kg", true,
+                Instant.now().plus(3, ChronoUnit.DAYS));
+        IngredientLot lotInG = makeLot(new BigDecimal("200"), "g", false,
+                Instant.now().plus(5, ChronoUnit.DAYS));
+
+        when(lotRepository.findByIngredientIdAndStatus(ingredientId, LotStatus.ACTIVE))
+                .thenReturn(List.of(lotInKg, lotInG));
+        when(unitConversionService.convert(new BigDecimal("1"), "kg", "g"))
+                .thenReturn(new BigDecimal("1000"));
+
+        List<LotAllocation> result = service.allocate(
+                ingredientId, UUID.randomUUID(), new BigDecimal("1100"), "g");
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(a -> "g".equals(a.getUnit())));
+        BigDecimal total = result.stream()
+                .map(LotAllocation::getQuantityFromThisLot)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(0, new BigDecimal("1100").compareTo(total));
+    }
+
+    @Test
+    void incompatibleUnitsExceptionPropagated() {
+        UUID ingredientId = UUID.randomUUID();
+        IngredientLot lotInMl = makeLot(new BigDecimal("500"), "ml", false,
+                Instant.now().plus(5, ChronoUnit.DAYS));
+
+        when(lotRepository.findByIngredientIdAndStatus(ingredientId, LotStatus.ACTIVE))
+                .thenReturn(List.of(lotInMl));
+        when(unitConversionService.convert(new BigDecimal("500"), "ml", "g"))
+                .thenThrow(new IncompatibleUnitsException("ml", "g"));
+
+        assertThrows(IncompatibleUnitsException.class,
+                () -> service.allocate(ingredientId, UUID.randomUUID(), new BigDecimal("100"), "g"));
+    }
 }
