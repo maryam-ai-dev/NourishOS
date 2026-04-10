@@ -32,10 +32,13 @@ import com.nourishos.authority.service.execution.ExecutionSessionCache;
 import com.nourishos.authority.service.execution.InterventionStateCache;
 import com.nourishos.authority.service.planning.MealPlanService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/executions")
 @RequiredArgsConstructor
+@Slf4j
 public class ExecutionController {
 
     private final ExecutionPlanRepository executionPlanRepository;
@@ -46,6 +49,7 @@ public class ExecutionController {
     private final ExecutionSessionCache sessionCache;
     private final InterventionStateCache interventionCache;
     private final ObjectMapper objectMapper;
+    private final RestTemplate restTemplate;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -78,6 +82,15 @@ public class ExecutionController {
         executionPlanRepository.save(plan);
 
         sessionCache.writeSession(id, 0, "IN_PROGRESS", plan.getStartedAt().toString());
+
+        // Wire: call robotics simulation /run
+        try {
+            var simPayload = java.util.Map.of("executionId", id.toString());
+            restTemplate.postForObject("http://localhost:8001/run", simPayload, String.class);
+            log.info("Simulation started for execution {}", id);
+        } catch (Exception e) {
+            log.warn("Simulation call failed for execution {}: {}", id, e.getMessage());
+        }
 
         return plan;
     }
