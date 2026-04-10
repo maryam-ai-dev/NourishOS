@@ -13,6 +13,8 @@ import com.nourishos.authority.service.HouseholdNotFoundException;
 import com.nourishos.authority.service.InvalidNutritionGoalUnitException;
 import com.nourishos.authority.service.MemberNotFoundException;
 import com.nourishos.authority.service.inventory.InvalidParLevelException;
+import com.nourishos.authority.service.inventory.LotAlreadyOpenException;
+import com.nourishos.authority.service.inventory.LotNotActiveException;
 import com.nourishos.authority.service.inventory.NegativeQuantityException;
 import com.nourishos.authority.service.inventory.ParLevelNotFoundException;
 
@@ -49,9 +51,15 @@ public class GlobalExceptionHandler {
         return Map.of("error", ex.getMessage());
     }
 
-    @ExceptionHandler(NegativeQuantityException.class)
+    @ExceptionHandler({NegativeQuantityException.class, LotNotActiveException.class})
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-    public Map<String, String> handleNegativeQuantity(NegativeQuantityException ex) {
+    public Map<String, String> handleUnprocessable(RuntimeException ex) {
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(LotAlreadyOpenException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleConflict(LotAlreadyOpenException ex) {
         return Map.of("error", ex.getMessage());
     }
 }

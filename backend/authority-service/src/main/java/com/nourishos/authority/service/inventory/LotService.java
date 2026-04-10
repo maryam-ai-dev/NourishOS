@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import com.nourishos.authority.domain.AdjustmentType;
 import com.nourishos.authority.domain.Ingredient;
 import com.nourishos.authority.domain.IngredientLot;
+import com.nourishos.authority.domain.LotStatus;
 import com.nourishos.authority.domain.StorageLocation;
 import com.nourishos.authority.dto.CreateLotRequest;
 import com.nourishos.authority.repository.IngredientLotRepository;
@@ -72,5 +73,30 @@ public class LotService {
                 reason != null ? reason : "Manual quantity correction");
 
         return lotRepository.findById(lotId).orElseThrow();
+    }
+
+    @Transactional
+    public IngredientLot openLot(UUID lotId) {
+        IngredientLot lot = lotRepository.findById(lotId)
+                .orElseThrow(() -> new IllegalArgumentException("Lot not found: " + lotId));
+
+        if (lot.getStatus() != LotStatus.ACTIVE) {
+            throw new LotNotActiveException(lotId, lot.getStatus());
+        }
+        if (lot.isOpen()) {
+            throw new LotAlreadyOpenException(lotId);
+        }
+
+        lot.setOpen(true);
+        lotRepository.save(lot);
+
+        adjustmentService.record(
+                lotId,
+                AdjustmentType.CORRECTION,
+                BigDecimal.ZERO,
+                lot.getUnit(),
+                "Opened");
+
+        return lot;
     }
 }

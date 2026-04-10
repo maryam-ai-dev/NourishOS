@@ -66,6 +66,11 @@ public class InventoryController {
         return lotService.updateQuantity(id, request.getNewQuantity(), request.getReason());
     }
 
+    @PostMapping("/lots/{id}/open")
+    public IngredientLot openLot(@PathVariable UUID id) {
+        return lotService.openLot(id);
+    }
+
     @GetMapping("/snapshot")
     public StockSnapshot snapshot(@RequestParam UUID householdId) {
         return snapshotService.generateSnapshot(householdId);
