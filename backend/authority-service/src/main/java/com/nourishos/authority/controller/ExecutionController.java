@@ -53,6 +53,7 @@ public class ExecutionController {
     private final com.nourishos.authority.service.execution.ExecutionStepService executionStepService;
     private final com.nourishos.authority.repository.MealOutcomeEventRepository mealOutcomeEventRepository;
     private final com.nourishos.authority.service.inventory.FoodFlowSnapshotService foodFlowSnapshotService;
+    private final com.nourishos.authority.service.savings.SavingsSnapshotService savingsSnapshotService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -223,7 +224,8 @@ public class ExecutionController {
 
                 UUID hhId = plan.getMealPlan().getMealRequest().getHousehold().getId();
                 foodFlowSnapshotService.generate(hhId);
-                log.info("Execution {} completed — MealOutcomeEvent COMPLETED, snapshot regenerated", id);
+                savingsSnapshotService.generate(hhId);
+                log.info("Execution {} completed -- MealOutcomeEvent COMPLETED, snapshots regenerated", id);
             } catch (Exception e) {
                 log.warn("Post-completion food flow handling failed: {}", e.getMessage());
             }
