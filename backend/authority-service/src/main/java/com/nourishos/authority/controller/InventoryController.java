@@ -71,6 +71,11 @@ public class InventoryController {
         return lotService.openLot(id);
     }
 
+    @PostMapping("/lots/{id}/deplete")
+    public IngredientLot depleteLot(@PathVariable UUID id) {
+        return lotService.depleteLot(id);
+    }
+
     @GetMapping("/snapshot")
     public StockSnapshot snapshot(@RequestParam UUID householdId) {
         return snapshotService.generateSnapshot(householdId);

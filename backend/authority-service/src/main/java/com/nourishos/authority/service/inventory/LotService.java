@@ -13,8 +13,10 @@ import com.nourishos.authority.domain.Ingredient;
 import com.nourishos.authority.domain.IngredientLot;
 import com.nourishos.authority.domain.LotStatus;
 import com.nourishos.authority.domain.StorageLocation;
+import com.nourishos.authority.domain.InventoryAdjustment;
 import com.nourishos.authority.dto.CreateLotRequest;
 import com.nourishos.authority.repository.IngredientLotRepository;
+import com.nourishos.authority.repository.InventoryAdjustmentRepository;
 import com.nourishos.authority.repository.StorageLocationRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +28,7 @@ public class LotService {
     private final StorageLocationRepository locationRepository;
     private final IngredientService ingredientService;
     private final InventoryAdjustmentService adjustmentService;
+    private final InventoryAdjustmentRepository adjustmentRepository;
 
     @Transactional
     public IngredientLot addLot(CreateLotRequest request) {
@@ -48,12 +51,13 @@ public class LotService {
 
         IngredientLot saved = lotRepository.save(lot);
 
-        adjustmentService.record(
-                saved.getId(),
-                AdjustmentType.PURCHASE,
-                request.getQuantity(),
-                request.getUnit(),
-                "Initial purchase");
+        InventoryAdjustment adj = new InventoryAdjustment();
+        adj.setLot(saved);
+        adj.setAdjustmentType(AdjustmentType.PURCHASE);
+        adj.setQuantityDelta(request.getQuantity());
+        adj.setUnit(request.getUnit());
+        adj.setReason("Initial purchase");
+        adjustmentRepository.save(adj);
 
         return saved;
     }
@@ -96,6 +100,34 @@ public class LotService {
                 BigDecimal.ZERO,
                 lot.getUnit(),
                 "Opened");
+
+        return lot;
+    }
+
+    @Transactional
+    public IngredientLot depleteLot(UUID lotId) {
+        IngredientLot lot = lotRepository.findById(lotId)
+                .orElseThrow(() -> new IllegalArgumentException("Lot not found: " + lotId));
+
+        if (lot.getStatus() == LotStatus.DEPLETED) {
+            throw new LotAlreadyDepletedException(lotId);
+        }
+
+        BigDecimal previousQuantity = lot.getQuantity();
+
+        lot.setStatus(LotStatus.DEPLETED);
+        lot.setQuantity(BigDecimal.ZERO);
+        lotRepository.save(lot);
+
+        if (previousQuantity.compareTo(BigDecimal.ZERO) > 0) {
+            InventoryAdjustment adj = new InventoryAdjustment();
+            adj.setLot(lot);
+            adj.setAdjustmentType(AdjustmentType.DEDUCTION);
+            adj.setQuantityDelta(previousQuantity.negate());
+            adj.setUnit(lot.getUnit());
+            adj.setReason("Depleted");
+            adjustmentRepository.save(adj);
+        }
 
         return lot;
     }
