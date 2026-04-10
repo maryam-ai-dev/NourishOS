@@ -66,6 +66,19 @@ nourishos/
 
 **Redis** has exactly three jobs: execution session cache, active intervention state, recommendation cache.
 
+## V1 Useful Checkpoint
+
+After Phases 1-12 and 15, the system is useful without robotics:
+
+- Weekly planning across household members with dietary fit
+- Inventory with explicit ParLevel thresholds
+- Food flow history: ConsumptionEvents, WasteEvents, MealOutcomeEvents
+- RECURRING_WASTE detection and replenishment quantity adjustment
+- Stockout forecasting against ParLevel minimums
+- Insights: waste ratio, reliable meals, over-bought ingredients
+
+Phases 13-14 add execution planning and smart kitchen simulation. Phases 16-18 complete the Flutter experience.
+
 ## Running locally
 
 ```bash
@@ -84,3 +97,11 @@ cd robotics/simulation && python main.py
 # Flutter
 cd frontend && flutter run
 ```
+
+## License
+
+Apache License 2.0
+
+---
+
+Built by Maryam as a food intelligence system that puts household needs first.
