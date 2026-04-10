@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nourishos.authority.domain.ConsumptionEvent;
 import com.nourishos.authority.domain.FoodFlowSnapshot;
+import com.nourishos.authority.domain.IngredientUsageRecord;
 import com.nourishos.authority.domain.MealOutcomeEvent;
 import com.nourishos.authority.domain.WasteEvent;
 import com.nourishos.authority.dto.CreateConsumptionEventDto;
@@ -20,6 +22,7 @@ import com.nourishos.authority.dto.CreateMealOutcomeDto;
 import com.nourishos.authority.dto.CreateWasteEventDto;
 import com.nourishos.authority.repository.ConsumptionEventRepository;
 import com.nourishos.authority.repository.IngredientLotRepository;
+import com.nourishos.authority.repository.IngredientUsageRecordRepository;
 import com.nourishos.authority.repository.MealOutcomeEventRepository;
 import com.nourishos.authority.repository.MealPlanRepository;
 import com.nourishos.authority.repository.WasteEventRepository;
@@ -44,6 +47,7 @@ public class FoodFlowController {
     private final IngredientLotRepository lotRepository;
     private final MealOutcomeEventRepository mealOutcomeEventRepository;
     private final MealPlanRepository mealPlanRepository;
+    private final IngredientUsageRecordRepository usageRecordRepository;
 
     @GetMapping("/snapshot")
     public FoodFlowSnapshot snapshot(@RequestParam UUID householdId) {
@@ -103,5 +107,13 @@ public class FoodFlowController {
         event.setOutcome(dto.getOutcome());
         event.setNotes(dto.getNotes());
         return mealOutcomeEventRepository.save(event);
+    }
+
+    @GetMapping("/usage/{ingredientId}")
+    public IngredientUsageRecord usage(@PathVariable UUID ingredientId,
+                                        @RequestParam UUID householdId) {
+        return usageRecordRepository.findByHouseholdIdAndIngredientId(householdId, ingredientId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No usage record for household " + householdId + ", ingredient " + ingredientId));
     }
 }
