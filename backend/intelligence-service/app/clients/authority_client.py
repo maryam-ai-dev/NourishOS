@@ -81,3 +81,50 @@ def get_members(household_id: str) -> List[HouseholdMember]:
     resp = _get_client().get(f"/households/{household_id}/members")
     data = _handle_response(resp)
     return [HouseholdMember.model_validate(m) for m in data]
+
+
+# --- Sprint 9.2: Inventory & Food Flow ---
+
+class ParLevel(BaseModel):
+    id: UUID
+    household_id: UUID = Field(alias="householdId")
+    ingredient_id: UUID = Field(alias="ingredientId")
+    preferred_quantity: Decimal = Field(alias="preferredQuantity")
+    minimum_quantity: Decimal = Field(alias="minimumQuantity")
+    unit: str
+
+    model_config = {"populate_by_name": True}
+
+
+class IngredientUsageRecord(BaseModel):
+    id: UUID
+    total_consumed_last_4_weeks: Decimal = Field(alias="totalConsumedLast4Weeks")
+    total_wasted_last_4_weeks: Decimal = Field(alias="totalWastedLast4Weeks")
+    avg_weekly_usage: Decimal = Field(alias="avgWeeklyUsage")
+
+    model_config = {"populate_by_name": True}
+
+
+def get_inventory_snapshot(household_id: str) -> dict:
+    resp = _get_client().get("/inventory/snapshot", params={"householdId": household_id})
+    return _handle_response(resp)
+
+
+def get_foodflow_snapshot(household_id: str) -> dict:
+    resp = _get_client().get("/foodflow/snapshot", params={"householdId": household_id})
+    return _handle_response(resp)
+
+
+def get_par_levels(household_id: str) -> List[ParLevel]:
+    resp = _get_client().get(f"/households/{household_id}/par-levels")
+    data = _handle_response(resp)
+    return [ParLevel.model_validate(p) for p in data]
+
+
+def get_usage_records(household_id: str) -> List[IngredientUsageRecord]:
+    resp = _get_client().get(f"/foodflow/usage", params={"householdId": household_id})
+    # This endpoint returns a single record, but we wrap for consistency
+    data = _handle_response(resp)
+    if isinstance(data, list):
+        return [IngredientUsageRecord.model_validate(r) for r in data]
+    return [IngredientUsageRecord.model_validate(data)]
