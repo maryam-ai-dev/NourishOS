@@ -43,6 +43,7 @@ public class AuditController {
                 .filter(r -> "CONSUMPTION".equals(r.getEventType())
                         || "WASTE".equals(r.getEventType())
                         || "MEAL_OUTCOME".equals(r.getEventType()))
+                .sorted(java.util.Comparator.comparing(AuditRecord::getCreatedAt))
                 .toList();
     }
 }
