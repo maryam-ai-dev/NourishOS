@@ -14,17 +14,23 @@ import com.nourishos.authority.domain.RequestType;
 import com.nourishos.authority.repository.MealConstraintRepository;
 import com.nourishos.authority.repository.MealRequestRepository;
 import com.nourishos.authority.service.HouseholdService;
+import com.nourishos.authority.service.recommendation.RecommendationCacheService;
+import com.nourishos.authority.service.recommendation.RecommendationCacheService.RankResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MealRequestService {
 
     private static final int DUPLICATE_GUARD_MINUTES = 5;
+    private static final int MAX_CANDIDATES = 3;
 
     private final MealRequestRepository mealRequestRepository;
     private final MealConstraintRepository mealConstraintRepository;
     private final HouseholdService householdService;
+    private final RecommendationCacheService recommendationCacheService;
 
     @Transactional
     public MealRequest createRequest(UUID householdId, RequestType requestType,
@@ -52,7 +58,22 @@ public class MealRequestService {
         constraint.setMealRequest(saved);
         mealConstraintRepository.save(constraint);
 
+        // Wire: call FastAPI /recommendation/rank via cache service
+        triggerRanking(householdId, constraint);
+
         return saved;
+    }
+
+    private void triggerRanking(UUID householdId, MealConstraint constraint) {
+        try {
+            Double proteinTarget = constraint.getProteinTargetGrams() != null
+                    ? constraint.getProteinTargetGrams().doubleValue() : null;
+            RankResponse ranked = recommendationCacheService.getRankedMeals(
+                    householdId, proteinTarget, MAX_CANDIDATES);
+            log.info("Ranking completed for household {}: {} candidates", householdId, ranked.ranked().size());
+        } catch (Exception e) {
+            log.warn("Ranking call failed for household {}: {}", householdId, e.getMessage());
+        }
     }
 
     public MealRequest findById(UUID id) {
