@@ -60,6 +60,11 @@ public class ReplenishmentSuggestion {
     @Column(name = "adjusted_for_waste", nullable = false)
     private boolean adjustedForWaste = false;
 
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replenishment_request_id")
+    private ReplenishmentRequest replenishmentRequest;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
