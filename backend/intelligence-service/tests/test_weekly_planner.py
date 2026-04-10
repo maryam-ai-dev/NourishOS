@@ -9,6 +9,7 @@ from app.services.planning.weekly_planner import (
     MealCandidate,
     MemberProfile,
     IngredientInfo,
+    NearExpiryIngredient,
     plan_weekly_slots,
     SlotAssignment,
 )
@@ -202,3 +203,155 @@ class TestPlanWeeklySlots:
                 assert type_order[curr.meal_type] <= type_order[nxt.meal_type]
             else:
                 assert curr.day < nxt.day
+
+
+class TestWasteMinimisation:
+    def test_waste_aware_plan_differs_from_naive(self):
+        """Near-expiry ingredient should boost meal to earlier use."""
+        near_expiry_id = uuid4()
+        # Meal that uses near-expiry ingredient — lower base score
+        expiry_meal = MealCandidate(
+            meal_id=uuid4(),
+            meal_name="Use-It-Up Stir Fry",
+            meal_type="DINNER",
+            estimated_protein_grams=Decimal("28"),
+            ingredient_infos=[IngredientInfo(near_expiry_id, Decimal("300"), "g", perishability_class="PERISHABLE")],
+            composite_score=0.5,
+        )
+        # Higher-scored dinner that doesn't use near-expiry
+        better_dinner = _make_candidate("Premium Pasta", "DINNER", score=0.65)
+
+        # Fill with enough meals for the full week
+        candidates = [expiry_meal, better_dinner]
+        for i in range(25):
+            for mt in ["BREAKFAST", "LUNCH", "DINNER"]:
+                candidates.append(_make_candidate(f"Filler {mt} {i}", mt, score=0.4 - i * 0.01))
+
+        near_expiry = [NearExpiryIngredient(
+            ingredient_id=near_expiry_id,
+            expiry_date=date(2026, 4, 15),  # expires day 3 of the week
+            quantity_remaining=Decimal("300"),
+            unit="g",
+        )]
+
+        result_waste_aware = plan_weekly_slots(
+            household_id=uuid4(),
+            week_start_date=date(2026, 4, 13),
+            candidates=candidates,
+            members=[],
+            near_expiry_ingredients=near_expiry,
+        )
+
+        result_naive = plan_weekly_slots(
+            household_id=uuid4(),
+            week_start_date=date(2026, 4, 13),
+            candidates=candidates,
+            members=[],
+            near_expiry_ingredients=[],
+        )
+
+        # The waste-aware plan should include the expiry meal
+        waste_aware_meals = {s.meal_name for s in result_waste_aware.slots}
+        assert "Use-It-Up Stir Fry" in waste_aware_meals
+
+    def test_near_expiry_scheduled_before_expiry_date(self):
+        near_expiry_id = uuid4()
+        expiry_meal = MealCandidate(
+            meal_id=uuid4(),
+            meal_name="Expiring Salad",
+            meal_type="LUNCH",
+            estimated_protein_grams=Decimal("15"),
+            ingredient_infos=[IngredientInfo(near_expiry_id, Decimal("200"), "g", perishability_class="PERISHABLE")],
+            composite_score=0.6,
+        )
+        # Fill week
+        candidates = [expiry_meal]
+        for i in range(25):
+            for mt in ["BREAKFAST", "LUNCH", "DINNER"]:
+                candidates.append(_make_candidate(f"Filler {mt} {i}", mt, score=0.5 - i * 0.01))
+
+        week_start = date(2026, 4, 13)
+        near_expiry = [NearExpiryIngredient(
+            ingredient_id=near_expiry_id,
+            expiry_date=date(2026, 4, 16),  # expires day 4
+            quantity_remaining=Decimal("200"),
+            unit="g",
+        )]
+
+        result = plan_weekly_slots(
+            household_id=uuid4(),
+            week_start_date=week_start,
+            candidates=candidates,
+            members=[],
+            near_expiry_ingredients=near_expiry,
+        )
+
+        salad_slot = next((s for s in result.slots if s.meal_name == "Expiring Salad"), None)
+        assert salad_slot is not None
+        # Should be scheduled before expiry (day 4 = April 16)
+        slot_date = week_start + __import__("datetime").timedelta(days=salad_slot.day - 1)
+        assert slot_date <= date(2026, 4, 16)
+
+    def test_waste_reduction_score_in_range(self):
+        candidates = []
+        for i in range(25):
+            for mt in ["BREAKFAST", "LUNCH", "DINNER"]:
+                candidates.append(_make_candidate(f"Meal {mt} {i}", mt, score=0.8 - i * 0.01))
+
+        result = plan_weekly_slots(
+            household_id=uuid4(),
+            week_start_date=date(2026, 4, 13),
+            candidates=candidates,
+            members=[],
+        )
+
+        assert 0.0 <= result.waste_reduction_score <= 1.0
+
+    def test_waste_reduction_score_perfect_with_no_near_expiry(self):
+        """No near-expiry ingredients means nothing to waste → score 1.0."""
+        candidates = []
+        for i in range(25):
+            for mt in ["BREAKFAST", "LUNCH", "DINNER"]:
+                candidates.append(_make_candidate(f"Meal {mt} {i}", mt, score=0.8 - i * 0.01))
+
+        result = plan_weekly_slots(
+            household_id=uuid4(),
+            week_start_date=date(2026, 4, 13),
+            candidates=candidates,
+            members=[],
+            near_expiry_ingredients=[],
+        )
+
+        assert result.waste_reduction_score == 1.0
+
+    def test_waste_reduction_score_when_near_expiry_used(self):
+        near_expiry_id = uuid4()
+        meal_using_expiry = MealCandidate(
+            meal_id=uuid4(),
+            meal_name="Expiry User",
+            meal_type="DINNER",
+            estimated_protein_grams=Decimal("20"),
+            ingredient_infos=[IngredientInfo(near_expiry_id, Decimal("150"), "g")],
+            composite_score=0.9,
+        )
+        candidates = [meal_using_expiry]
+        for i in range(25):
+            for mt in ["BREAKFAST", "LUNCH", "DINNER"]:
+                candidates.append(_make_candidate(f"Filler {mt} {i}", mt, score=0.5))
+
+        near_expiry = [NearExpiryIngredient(
+            ingredient_id=near_expiry_id,
+            expiry_date=date(2026, 4, 20),  # expires within the week
+            quantity_remaining=Decimal("150"),
+            unit="g",
+        )]
+
+        result = plan_weekly_slots(
+            household_id=uuid4(),
+            week_start_date=date(2026, 4, 13),
+            candidates=candidates,
+            members=[],
+            near_expiry_ingredients=near_expiry,
+        )
+
+        assert result.waste_reduction_score == 1.0  # near-expiry ingredient was used

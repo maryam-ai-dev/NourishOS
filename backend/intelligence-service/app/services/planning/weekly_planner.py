@@ -12,6 +12,14 @@ from datetime import date, timedelta
 
 
 @dataclass
+class NearExpiryIngredient:
+    ingredient_id: UUID
+    expiry_date: date
+    quantity_remaining: Decimal
+    unit: str
+
+
+@dataclass
 class IngredientInfo:
     ingredient_id: UUID
     base_quantity: Decimal
@@ -59,6 +67,7 @@ class WeeklyPlanResult:
     slots: List[SlotAssignment] = field(default_factory=list)
     missing_ingredients: List[Dict] = field(default_factory=list)
     member_fit_summary: Dict[str, Dict] = field(default_factory=dict)
+    waste_reduction_score: float = 0.0
 
 
 DAYS_OF_WEEK = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
@@ -90,12 +99,51 @@ def _all_members_can_eat(meal: MealCandidate, members: List[MemberProfile]) -> b
     return all(_member_can_eat(meal, m) for m in members)
 
 
+def _meal_uses_near_expiry(meal: MealCandidate, near_expiry_ids: Set[UUID]) -> bool:
+    return any(ing.ingredient_id in near_expiry_ids for ing in meal.ingredient_infos)
+
+
+def _waste_score_for_plan(
+    slots: List[SlotAssignment],
+    candidates: List[MealCandidate],
+    near_expiry: List[NearExpiryIngredient],
+    week_start_date: date,
+) -> float:
+    """
+    Score [0, 1] for how well the plan uses near-expiry ingredients before they expire.
+    1.0 = all near-expiry ingredients used before expiry. 0.0 = none used.
+    """
+    if not near_expiry:
+        return 1.0  # nothing to waste
+
+    near_expiry_ids = {ne.ingredient_id for ne in near_expiry}
+    expiry_by_id = {ne.ingredient_id: ne.expiry_date for ne in near_expiry}
+
+    used_before_expiry = 0
+    total_near_expiry = len(near_expiry)
+
+    for ne in near_expiry:
+        # Check if any slot uses this ingredient before its expiry
+        for slot in slots:
+            meal = next((c for c in candidates if c.meal_id == slot.meal_id), None)
+            if meal is None:
+                continue
+            slot_date = week_start_date + timedelta(days=slot.day - 1)
+            if slot_date <= ne.expiry_date:
+                if any(ing.ingredient_id == ne.ingredient_id for ing in meal.ingredient_infos):
+                    used_before_expiry += 1
+                    break
+
+    return used_before_expiry / total_near_expiry
+
+
 def plan_weekly_slots(
     household_id: UUID,
     week_start_date: date,
     candidates: List[MealCandidate],
     members: List[MemberProfile],
     meal_types: Optional[List[str]] = None,
+    near_expiry_ingredients: Optional[List[NearExpiryIngredient]] = None,
 ) -> WeeklyPlanResult:
     """
     Assign meals to 7-day slots.
@@ -105,6 +153,10 @@ def plan_weekly_slots(
     """
     if meal_types is None:
         meal_types = MEAL_TYPES
+    if near_expiry_ingredients is None:
+        near_expiry_ingredients = []
+
+    near_expiry_ids = {ne.ingredient_id for ne in near_expiry_ingredients}
 
     result = WeeklyPlanResult(
         household_id=household_id,
@@ -118,9 +170,13 @@ def plan_weekly_slots(
     perishable = [c for c in compatible if _is_highly_perishable(c)]
     non_perishable = [c for c in compatible if not _is_highly_perishable(c)]
 
-    # Sort by composite score descending
-    perishable.sort(key=lambda c: c.composite_score, reverse=True)
-    non_perishable.sort(key=lambda c: c.composite_score, reverse=True)
+    # Sort by composite score descending, boosting meals that use near-expiry ingredients
+    def _sort_key(c: MealCandidate) -> float:
+        boost = 0.2 if _meal_uses_near_expiry(c, near_expiry_ids) else 0.0
+        return c.composite_score + boost
+
+    perishable.sort(key=_sort_key, reverse=True)
+    non_perishable.sort(key=_sort_key, reverse=True)
 
     used_meal_ids: Set[UUID] = set()
     daily_protein: Dict[int, Decimal] = {d: Decimal("0") for d in range(1, 8)}
@@ -190,6 +246,11 @@ def plan_weekly_slots(
     # Sort slots by day then meal type
     type_order = {t: i for i, t in enumerate(meal_types)}
     result.slots.sort(key=lambda s: (s.day, type_order.get(s.meal_type, 99)))
+
+    # Compute waste reduction score
+    result.waste_reduction_score = _waste_score_for_plan(
+        result.slots, candidates, near_expiry_ingredients, week_start_date
+    )
 
     # Build member fit summary
     for member in members:
