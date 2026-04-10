@@ -41,4 +41,20 @@ class ExecutionPlanTest {
         plan.setStatus(ExecutionStatus.PAUSED);
         assertDoesNotThrow(() -> plan.transitionTo(ExecutionStatus.IN_PROGRESS));
     }
+
+    @Test
+    void completedStatusUnchangedAfterRejectedTransition() {
+        ExecutionPlan plan = new ExecutionPlan();
+        plan.setStatus(ExecutionStatus.COMPLETED);
+        assertThrows(IllegalStateException.class, () -> plan.transitionTo(ExecutionStatus.IN_PROGRESS));
+        assertEquals(ExecutionStatus.COMPLETED, plan.getStatus());
+    }
+
+    @Test
+    void abortedStatusUnchangedAfterRejectedTransition() {
+        ExecutionPlan plan = new ExecutionPlan();
+        plan.setStatus(ExecutionStatus.ABORTED);
+        assertThrows(IllegalStateException.class, () -> plan.transitionTo(ExecutionStatus.IN_PROGRESS));
+        assertEquals(ExecutionStatus.ABORTED, plan.getStatus());
+    }
 }
