@@ -175,3 +175,15 @@ def get_meal_catalog() -> List[MealOption]:
             item["ingredientRefs"] = json.loads(item["ingredientRefs"])
         results.append(MealOption.model_validate(item))
     return results
+
+
+# --- Sprint 12.5: Replenishment POST ---
+
+def post_replenishment_suggestions(household_id: str, suggestions: List[dict]) -> dict:
+    """POST optimised suggestions to Spring Boot."""
+    resp = _get_client().post(
+        "/replenishment/suggestions",
+        json=suggestions,
+        params={"householdId": household_id},
+    )
+    return _handle_response(resp)
