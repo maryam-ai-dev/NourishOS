@@ -13,11 +13,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nourishos.authority.domain.ConsumptionEvent;
 import com.nourishos.authority.domain.FoodFlowSnapshot;
+import com.nourishos.authority.domain.MealOutcomeEvent;
 import com.nourishos.authority.domain.WasteEvent;
 import com.nourishos.authority.dto.CreateConsumptionEventDto;
+import com.nourishos.authority.dto.CreateMealOutcomeDto;
 import com.nourishos.authority.dto.CreateWasteEventDto;
 import com.nourishos.authority.repository.ConsumptionEventRepository;
 import com.nourishos.authority.repository.IngredientLotRepository;
+import com.nourishos.authority.repository.MealOutcomeEventRepository;
+import com.nourishos.authority.repository.MealPlanRepository;
 import com.nourishos.authority.repository.WasteEventRepository;
 import com.nourishos.authority.service.HouseholdService;
 import com.nourishos.authority.service.inventory.FoodFlowSnapshotService;
@@ -38,6 +42,8 @@ public class FoodFlowController {
     private final HouseholdService householdService;
     private final IngredientService ingredientService;
     private final IngredientLotRepository lotRepository;
+    private final MealOutcomeEventRepository mealOutcomeEventRepository;
+    private final MealPlanRepository mealPlanRepository;
 
     @GetMapping("/snapshot")
     public FoodFlowSnapshot snapshot(@RequestParam UUID householdId) {
@@ -85,5 +91,17 @@ public class FoodFlowController {
         usageRecordService.recompute(dto.getHouseholdId(), dto.getIngredientId());
 
         return saved;
+    }
+
+    @PostMapping("/events/meal-outcome")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MealOutcomeEvent recordMealOutcome(@Valid @RequestBody CreateMealOutcomeDto dto) {
+        MealOutcomeEvent event = new MealOutcomeEvent();
+        event.setMealPlan(mealPlanRepository.findById(dto.getMealPlanId())
+                .orElseThrow(() -> new IllegalArgumentException("MealPlan not found: " + dto.getMealPlanId())));
+        event.setHousehold(householdService.findById(dto.getHouseholdId()));
+        event.setOutcome(dto.getOutcome());
+        event.setNotes(dto.getNotes());
+        return mealOutcomeEventRepository.save(event);
     }
 }
