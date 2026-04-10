@@ -1,6 +1,7 @@
 package com.nourishos.authority.service.planning;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -9,9 +10,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nourishos.authority.domain.MealPlan;
+import com.nourishos.authority.domain.MealPlanCandidate;
 import com.nourishos.authority.domain.MealRequest;
 import com.nourishos.authority.domain.ServingProfile;
 import com.nourishos.authority.dto.CreateMealPlanDto;
+import com.nourishos.authority.dto.MealPlanResponse;
+import com.nourishos.authority.repository.MealPlanCandidateRepository;
 import com.nourishos.authority.repository.MealPlanRepository;
 import com.nourishos.authority.repository.ServingProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class MealPlanService {
 
     private final MealPlanRepository mealPlanRepository;
+    private final MealPlanCandidateRepository candidateRepository;
     private final ServingProfileRepository servingProfileRepository;
     private final MealRequestService mealRequestService;
     private final ObjectMapper objectMapper;
@@ -54,5 +59,13 @@ public class MealPlanService {
     public MealPlan findById(UUID id) {
         return mealPlanRepository.findById(id)
                 .orElseThrow(() -> new MealPlanNotFoundException(id));
+    }
+
+    @Transactional(readOnly = true)
+    public MealPlanResponse getFullPlan(UUID id) {
+        MealPlan plan = findById(id);
+        List<MealPlanCandidate> candidates = candidateRepository.findByMealPlanId(id);
+        ServingProfile profile = servingProfileRepository.findByMealPlanId(id).orElse(null);
+        return MealPlanResponse.from(plan, candidates, profile);
     }
 }

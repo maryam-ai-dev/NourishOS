@@ -3,6 +3,8 @@ package com.nourishos.authority.controller;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nourishos.authority.domain.MealPlan;
 import com.nourishos.authority.dto.CreateMealPlanDto;
+import com.nourishos.authority.dto.MealPlanResponse;
 import com.nourishos.authority.service.planning.MealPlanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,5 +29,10 @@ public class MealPlanController {
     @ResponseStatus(HttpStatus.CREATED)
     public MealPlan create(@Valid @RequestBody CreateMealPlanDto dto) {
         return mealPlanService.create(dto);
+    }
+
+    @GetMapping("/{id}")
+    public MealPlanResponse get(@PathVariable UUID id) {
+        return mealPlanService.getFullPlan(id);
     }
 }
