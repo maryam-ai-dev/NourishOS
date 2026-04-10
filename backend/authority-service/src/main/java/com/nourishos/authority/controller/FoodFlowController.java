@@ -13,12 +13,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nourishos.authority.domain.ConsumptionEvent;
 import com.nourishos.authority.domain.FoodFlowSnapshot;
+import com.nourishos.authority.domain.WasteEvent;
 import com.nourishos.authority.dto.CreateConsumptionEventDto;
+import com.nourishos.authority.dto.CreateWasteEventDto;
 import com.nourishos.authority.repository.ConsumptionEventRepository;
 import com.nourishos.authority.repository.IngredientLotRepository;
+import com.nourishos.authority.repository.WasteEventRepository;
 import com.nourishos.authority.service.HouseholdService;
 import com.nourishos.authority.service.inventory.FoodFlowSnapshotService;
 import com.nourishos.authority.service.inventory.IngredientService;
+import com.nourishos.authority.service.inventory.UsageRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +33,8 @@ public class FoodFlowController {
 
     private final FoodFlowSnapshotService snapshotService;
     private final ConsumptionEventRepository consumptionEventRepository;
+    private final WasteEventRepository wasteEventRepository;
+    private final UsageRecordService usageRecordService;
     private final HouseholdService householdService;
     private final IngredientService ingredientService;
     private final IngredientLotRepository lotRepository;
@@ -59,5 +65,25 @@ public class FoodFlowController {
             // mealPlan lookup would go here; for now just set null for UNPLANNED
         }
         return consumptionEventRepository.save(event);
+    }
+
+    @PostMapping("/events/waste")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WasteEvent recordWaste(@Valid @RequestBody CreateWasteEventDto dto) {
+        WasteEvent event = new WasteEvent();
+        event.setHousehold(householdService.findById(dto.getHouseholdId()));
+        event.setIngredient(ingredientService.findById(dto.getIngredientId()));
+        if (dto.getLotId() != null) {
+            event.setLot(lotRepository.findById(dto.getLotId()).orElse(null));
+        }
+        event.setQuantity(dto.getQuantity());
+        event.setUnit(dto.getUnit());
+        event.setWasteReason(dto.getWasteReason());
+
+        WasteEvent saved = wasteEventRepository.save(event);
+
+        usageRecordService.recompute(dto.getHouseholdId(), dto.getIngredientId());
+
+        return saved;
     }
 }
