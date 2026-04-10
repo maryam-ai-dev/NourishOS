@@ -23,9 +23,12 @@ import com.nourishos.authority.repository.MealPlanRepository;
 import com.nourishos.authority.repository.MealRequestRepository;
 import com.nourishos.authority.repository.ServingProfileRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MealPlanService {
 
     private final MealPlanRepository mealPlanRepository;
@@ -35,6 +38,7 @@ public class MealPlanService {
     private final MealOptionRepository mealOptionRepository;
     private final MealRequestService mealRequestService;
     private final ObjectMapper objectMapper;
+    private final RestTemplate restTemplate;
 
     @Transactional
     public MealPlan create(CreateMealPlanDto dto) {
@@ -96,7 +100,25 @@ public class MealPlanService {
         request.setStatus(MealRequestStatus.PLANNED);
         mealRequestRepository.save(request);
 
+        // Wire: call FastAPI /execution/plan after selection
+        triggerExecutionPlanning(planId, mealOption, plan.getServings());
+
         ServingProfile profile = servingProfileRepository.findByMealPlanId(planId).orElse(null);
         return MealPlanResponse.from(plan, candidates, profile);
+    }
+
+    private void triggerExecutionPlanning(UUID planId, MealOption mealOption, int servings) {
+        try {
+            var payload = java.util.Map.of(
+                "mealPlanId", planId.toString(),
+                "steps", java.util.List.of(),
+                "machineCapabilities", java.util.List.of("DISPENSE_DRY", "DISPENSE_LIQUID", "HEAT", "STIR")
+            );
+            String url = "http://localhost:8000/execution/plan";
+            restTemplate.postForObject(url, payload, String.class);
+            log.info("Execution plan requested for mealPlan {}", planId);
+        } catch (Exception e) {
+            log.warn("Execution planning call failed for mealPlan {}: {}", planId, e.getMessage());
+        }
     }
 }
