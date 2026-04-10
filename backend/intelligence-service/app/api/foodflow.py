@@ -29,6 +29,12 @@ from app.services.foodflow.stock_flow_model import (
     StockFlowSummary,
     analyze_stock_flow,
 )
+from app.services.foodflow.meal_reliability_analyzer import (
+    MealOutcomeEvent as MealOutcomeData,
+    analyze_meal_reliability,
+    MealReliability,
+)
+from app.services.foodflow.flow_insight_builder import build_insights
 from app.clients.authority_client import get_foodflow_snapshot
 
 router = APIRouter(prefix="/foodflow", tags=["foodflow"])
@@ -130,4 +136,158 @@ async def analyze_foodflow(request: AnalyzeRequest):
             over_bought_ingredients=stock_flow.over_bought_ingredients,
             under_supplied_ingredients=stock_flow.under_supplied_ingredients,
         ),
+    )
+
+
+# --- POST /foodflow/insights ---
+
+class InsightsRequest(BaseModel):
+    household_id: UUID = Field(alias="householdId")
+    snapshot_week: date = Field(alias="snapshotWeek")
+    model_config = {"populate_by_name": True}
+
+
+class InsightResponse(BaseModel):
+    category: str
+    insight_text: str = Field(alias="insightText")
+    model_config = {"populate_by_name": True}
+
+
+class InsightsResponse(BaseModel):
+    household_id: UUID = Field(alias="householdId")
+    insights: List[InsightResponse]
+    posted_to_spring: bool = Field(alias="postedToSpring")
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/insights", response_model=InsightsResponse)
+async def generate_insights(request: InsightsRequest):
+    """Generate and POST insights to Spring Boot."""
+    result = build_insights(
+        household_id=request.household_id,
+        snapshot_week=request.snapshot_week,
+    )
+
+    # Try to POST to Spring Boot
+    posted = False
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            payload = [
+                {
+                    "householdId": str(i.household_id),
+                    "snapshotWeek": str(i.snapshot_week),
+                    "category": i.category,
+                    "insightText": i.insight_text,
+                }
+                for i in result.insights
+            ]
+            resp = await client.post("http://localhost:8080/insights", json=payload, timeout=5.0)
+            posted = resp.status_code == 201
+    except Exception:
+        pass
+
+    return InsightsResponse(
+        household_id=request.household_id,
+        insights=[
+            InsightResponse(category=i.category, insight_text=i.insight_text)
+            for i in result.insights
+        ],
+        posted_to_spring=posted,
+    )
+
+
+# --- POST /foodflow/replenishment-score ---
+
+class ReplenishmentScoreRequest(BaseModel):
+    household_id: UUID = Field(alias="householdId")
+    ingredient_id: UUID = Field(alias="ingredientId")
+    proposed_quantity: float = Field(alias="proposedQuantity")
+    model_config = {"populate_by_name": True}
+
+
+class ReplenishmentScoreResponse(BaseModel):
+    ingredient_id: UUID = Field(alias="ingredientId")
+    score: float
+    is_recurring_waste: bool = Field(alias="isRecurringWaste")
+    adjusted_quantity: Optional[float] = Field(None, alias="adjustedQuantity")
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/replenishment-score", response_model=ReplenishmentScoreResponse)
+async def replenishment_score(request: ReplenishmentScoreRequest):
+    """Score a reorder against flow patterns. Pure computation."""
+    # In production, fetch waste events from Spring Boot
+    # For now, return a baseline score
+    waste_events: List[WasteEventData] = []
+    waste_pattern = analyze_waste_pattern(waste_events, total_consumed=Decimal("0"))
+
+    is_recurring = request.ingredient_id in set(waste_pattern.frequently_wasted_ingredients)
+    waste_ratio = float(waste_pattern.waste_ratio)
+
+    if is_recurring:
+        adjusted = request.proposed_quantity * (1 - waste_ratio)
+        score = max(0.0, 1.0 - waste_ratio)
+    else:
+        adjusted = request.proposed_quantity
+        score = 1.0
+
+    return ReplenishmentScoreResponse(
+        ingredient_id=request.ingredient_id,
+        score=score,
+        is_recurring_waste=is_recurring,
+        adjusted_quantity=adjusted,
+    )
+
+
+# --- POST /foodflow/meal-reliability ---
+
+class MealReliabilityRequest(BaseModel):
+    household_id: UUID = Field(alias="householdId")
+    meal_option_ids: List[UUID] = Field(alias="mealOptionIds")
+    model_config = {"populate_by_name": True}
+
+
+class MealReliabilityItem(BaseModel):
+    meal_option_id: UUID = Field(alias="mealOptionId")
+    completion_rate: float = Field(alias="completionRate")
+    reliability_score: float = Field(alias="reliabilityScore")
+    is_low_reliability: bool = Field(alias="isLowReliability")
+    model_config = {"populate_by_name": True}
+
+
+class MealReliabilityResponse(BaseModel):
+    household_id: UUID = Field(alias="householdId")
+    reliability: List[MealReliabilityItem]
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/meal-reliability", response_model=MealReliabilityResponse)
+async def meal_reliability(request: MealReliabilityRequest):
+    """Reliability data for a set of meal options. Pure computation."""
+    # In production, fetch outcome events from Spring Boot
+    outcomes: List[MealOutcomeData] = []
+    reliability_map = analyze_meal_reliability(outcomes)
+
+    items = []
+    for meal_id in request.meal_option_ids:
+        rel = reliability_map.get(meal_id)
+        if rel:
+            items.append(MealReliabilityItem(
+                meal_option_id=meal_id,
+                completion_rate=rel.completion_rate,
+                reliability_score=rel.reliability_score,
+                is_low_reliability=rel.is_low_reliability,
+            ))
+        else:
+            items.append(MealReliabilityItem(
+                meal_option_id=meal_id,
+                completion_rate=0.0,
+                reliability_score=0.0,
+                is_low_reliability=True,
+            ))
+
+    return MealReliabilityResponse(
+        household_id=request.household_id,
+        reliability=items,
     )
