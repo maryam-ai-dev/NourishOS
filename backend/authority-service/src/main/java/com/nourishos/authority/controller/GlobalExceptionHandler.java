@@ -18,6 +18,8 @@ import com.nourishos.authority.service.inventory.LotAlreadyDepletedException;
 import com.nourishos.authority.service.inventory.LotAlreadyOpenException;
 import com.nourishos.authority.service.inventory.LotNotActiveException;
 import com.nourishos.authority.service.inventory.NegativeQuantityException;
+import com.nourishos.authority.service.planning.DuplicateMealRequestException;
+import com.nourishos.authority.service.planning.InvalidServingsException;
 import com.nourishos.authority.service.planning.InvalidSustainabilityScoreException;
 import com.nourishos.authority.service.planning.MealOptionNotFoundException;
 import com.nourishos.authority.service.inventory.ParLevelNotFoundException;
@@ -50,7 +52,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({InvalidNutritionGoalUnitException.class, InvalidSustainabilityScoreException.class,
-            IllegalArgumentException.class})
+            InvalidServingsException.class, IllegalArgumentException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> handleBadRequest(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
@@ -62,7 +64,8 @@ public class GlobalExceptionHandler {
         return Map.of("error", ex.getMessage());
     }
 
-    @ExceptionHandler({LotAlreadyOpenException.class, LotAlreadyDepletedException.class})
+    @ExceptionHandler({LotAlreadyOpenException.class, LotAlreadyDepletedException.class,
+            DuplicateMealRequestException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public Map<String, String> handleConflict(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
