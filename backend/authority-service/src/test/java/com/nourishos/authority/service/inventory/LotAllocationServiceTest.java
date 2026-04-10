@@ -119,4 +119,63 @@ class LotAllocationServiceTest {
         assertEquals(sealed.getId(), result.get(1).getLotId());
         assertEquals(0, new BigDecimal("150").compareTo(result.get(1).getQuantityFromThisLot()));
     }
+
+    @Test
+    void nearerExpirySealedLotSelectedBeforeLaterExpiry() {
+        UUID ingredientId = UUID.randomUUID();
+        IngredientLot laterExpiry = makeLot(new BigDecimal("500"), "g", false,
+                Instant.now().plus(10, ChronoUnit.DAYS));
+        IngredientLot nearerExpiry = makeLot(new BigDecimal("500"), "g", false,
+                Instant.now().plus(2, ChronoUnit.DAYS));
+
+        when(lotRepository.findByIngredientIdAndStatus(ingredientId, LotStatus.ACTIVE))
+                .thenReturn(List.of(laterExpiry, nearerExpiry));
+
+        List<LotAllocation> result = service.allocate(
+                ingredientId, UUID.randomUUID(), new BigDecimal("200"), "g");
+
+        assertEquals(1, result.size());
+        assertEquals(nearerExpiry.getId(), result.get(0).getLotId());
+        assertEquals(0, new BigDecimal("200").compareTo(result.get(0).getQuantityFromThisLot()));
+    }
+
+    @Test
+    void partialAllocationWhenInsufficientStock() {
+        UUID ingredientId = UUID.randomUUID();
+        IngredientLot lot1 = makeLot(new BigDecimal("80"), "g", false,
+                Instant.now().plus(3, ChronoUnit.DAYS));
+        IngredientLot lot2 = makeLot(new BigDecimal("50"), "g", false,
+                Instant.now().plus(5, ChronoUnit.DAYS));
+
+        when(lotRepository.findByIngredientIdAndStatus(ingredientId, LotStatus.ACTIVE))
+                .thenReturn(List.of(lot1, lot2));
+
+        List<LotAllocation> result = service.allocate(
+                ingredientId, UUID.randomUUID(), new BigDecimal("200"), "g");
+
+        // Should not crash — returns partial allocation
+        assertEquals(2, result.size());
+        BigDecimal totalAllocated = result.stream()
+                .map(LotAllocation::getQuantityFromThisLot)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(0, new BigDecimal("130").compareTo(totalAllocated));
+        // Total < required, but no exception
+    }
+
+    @Test
+    void nullExpiryDateSortedAfterLotsWithExpiry() {
+        UUID ingredientId = UUID.randomUUID();
+        IngredientLot withExpiry = makeLot(new BigDecimal("500"), "g", false,
+                Instant.now().plus(5, ChronoUnit.DAYS));
+        IngredientLot noExpiry = makeLot(new BigDecimal("500"), "g", false, null);
+
+        when(lotRepository.findByIngredientIdAndStatus(ingredientId, LotStatus.ACTIVE))
+                .thenReturn(List.of(noExpiry, withExpiry));
+
+        List<LotAllocation> result = service.allocate(
+                ingredientId, UUID.randomUUID(), new BigDecimal("100"), "g");
+
+        assertEquals(1, result.size());
+        assertEquals(withExpiry.getId(), result.get(0).getLotId());
+    }
 }
