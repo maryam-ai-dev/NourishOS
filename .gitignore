@@ -1,6 +1,7 @@
 # === Project files ===
 CLAUDE.md
 sprint-plan.md
+nourishos-sprint-agent.md
 
 # === Java / Spring Boot ===
 *.class
