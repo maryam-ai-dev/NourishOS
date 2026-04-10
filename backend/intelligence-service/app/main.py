@@ -1,10 +1,13 @@
 from fastapi import FastAPI
+from app.api.recommendation import router as recommendation_router
 
 app = FastAPI(
     title="NourishOS Intelligence Service",
     description="Meal ranking, planning, food flow analysis, and forecasting",
     version="0.1.0",
 )
+
+app.include_router(recommendation_router)
 
 
 @app.get("/health")
