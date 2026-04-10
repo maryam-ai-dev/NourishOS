@@ -199,10 +199,13 @@ async def generate_insights(request: InsightsRequest):
 
 # --- POST /foodflow/replenishment-score ---
 
-class ReplenishmentScoreRequest(BaseModel):
+class ReplenishmentScoreRequest2(BaseModel):
+    """Enhanced request with optional waste context."""
     household_id: UUID = Field(alias="householdId")
     ingredient_id: UUID = Field(alias="ingredientId")
     proposed_quantity: float = Field(alias="proposedQuantity")
+    is_recurring_waste: bool = Field(False, alias="isRecurringWaste")
+    waste_ratio: float = Field(0.0, alias="wasteRatio")
     model_config = {"populate_by_name": True}
 
 
@@ -211,32 +214,41 @@ class ReplenishmentScoreResponse(BaseModel):
     score: float
     is_recurring_waste: bool = Field(alias="isRecurringWaste")
     adjusted_quantity: Optional[float] = Field(None, alias="adjustedQuantity")
+    reasoning: str = ""
     model_config = {"populate_by_name": True}
 
 
 @router.post("/replenishment-score", response_model=ReplenishmentScoreResponse)
-async def replenishment_score(request: ReplenishmentScoreRequest):
+async def replenishment_score(request: ReplenishmentScoreRequest2):
     """Score a reorder against flow patterns. Pure computation."""
-    # In production, fetch waste events from Spring Boot
-    # For now, return a baseline score
-    waste_events: List[WasteEventData] = []
-    waste_pattern = analyze_waste_pattern(waste_events, total_consumed=Decimal("0"))
+    is_recurring = request.is_recurring_waste
+    waste_ratio = request.waste_ratio
 
-    is_recurring = request.ingredient_id in set(waste_pattern.frequently_wasted_ingredients)
-    waste_ratio = float(waste_pattern.waste_ratio)
+    if not is_recurring:
+        # Try fetching from waste analysis
+        waste_events: List[WasteEventData] = []
+        waste_pattern = analyze_waste_pattern(waste_events, total_consumed=Decimal("0"))
+        is_recurring = request.ingredient_id in set(waste_pattern.frequently_wasted_ingredients)
+        waste_ratio = float(waste_pattern.waste_ratio)
 
-    if is_recurring:
+    if is_recurring and waste_ratio > 0:
         adjusted = request.proposed_quantity * (1 - waste_ratio)
         score = max(0.0, 1.0 - waste_ratio)
+        reasoning = (
+            f"Recurring waste detected (waste ratio: {waste_ratio:.0%}). "
+            f"Quantity reduced from {request.proposed_quantity} to {adjusted:.1f}."
+        )
     else:
         adjusted = request.proposed_quantity
         score = 1.0
+        reasoning = "No waste concerns. Proposed quantity approved as-is."
 
     return ReplenishmentScoreResponse(
         ingredient_id=request.ingredient_id,
         score=score,
         is_recurring_waste=is_recurring,
         adjusted_quantity=adjusted,
+        reasoning=reasoning,
     )
 
 
