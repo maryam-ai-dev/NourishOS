@@ -187,3 +187,11 @@ def post_replenishment_suggestions(household_id: str, suggestions: List[dict]) -
         params={"householdId": household_id},
     )
     return _handle_response(resp)
+
+
+# --- Sprint 13.5: Execution Plan POST ---
+
+def post_execution_plan(plan_payload: dict) -> dict:
+    """POST execution plan to Spring Boot. FastAPI proposes — Spring Boot persists."""
+    resp = _get_client().post("/executions", json=plan_payload)
+    return _handle_response(resp)
