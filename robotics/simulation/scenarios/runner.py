@@ -28,7 +28,7 @@ class ScenarioResult:
 
     def __repr__(self):
         status = "PASS" if self.success else "FAIL"
-        return f"[{status}] {self.name} → {self.terminal_state}: {self.detail}"
+        return f"[{status}] {self.name} -> {self.terminal_state}: {self.detail}"
 
 
 def _make_prims(plan_id, actions):
