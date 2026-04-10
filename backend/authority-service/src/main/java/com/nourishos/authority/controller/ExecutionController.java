@@ -139,4 +139,51 @@ public class ExecutionController {
 
         return response;
     }
+
+    @PostMapping("/{id}/interventions/{iid}/resolve")
+    @Transactional
+    public InterventionRequest resolveIntervention(@PathVariable UUID id, @PathVariable UUID iid) {
+        InterventionRequest ir = interventionRepository.findById(iid)
+                .orElseThrow(() -> new IllegalArgumentException("Intervention not found: " + iid));
+        ir.resolve();
+        interventionRepository.save(ir);
+
+        interventionCache.deleteIntervention(id);
+
+        return ir;
+    }
+
+    @PostMapping("/{id}/steps/{stepId}/complete")
+    @Transactional
+    public ExecutionStep completeStep(@PathVariable UUID id, @PathVariable UUID stepId) {
+        ExecutionStep step = stepRepository.findById(stepId)
+                .orElseThrow(() -> new IllegalArgumentException("Step not found: " + stepId));
+        step.setStatus("COMPLETE");
+        step.setCompletedAt(Instant.now());
+        stepRepository.save(step);
+
+        // Update Redis session with next step index
+        List<ExecutionStep> steps = stepRepository.findByPlanIdOrderByStepOrder(id);
+        int nextIndex = -1;
+        for (int i = 0; i < steps.size(); i++) {
+            if ("PENDING".equals(steps.get(i).getStatus())) {
+                nextIndex = i;
+                break;
+            }
+        }
+
+        if (nextIndex >= 0) {
+            sessionCache.updateStepIndex(id, nextIndex, "IN_PROGRESS");
+        } else {
+            // All steps complete
+            ExecutionPlan plan = executionPlanRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("ExecutionPlan not found: " + id));
+            plan.transitionTo(ExecutionStatus.COMPLETED);
+            plan.setCompletedAt(Instant.now());
+            executionPlanRepository.save(plan);
+            sessionCache.deleteSession(id);
+        }
+
+        return step;
+    }
 }
