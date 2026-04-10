@@ -71,8 +71,23 @@ async def rank_meals(request: RankRequest):
     # Build candidates (no restrictions for now)
     candidates = build_candidates(catalog, set(), set(), set(), max_missing_ingredients=999)
 
-    # Rank
-    ranked = rank_candidates(candidates, protein_target=request.protein_target)
+    # Fetch food flow signals for ranking
+    reliability_scores = {}
+    try:
+        from app.services.foodflow.meal_reliability_analyzer import (
+            MealOutcomeEvent, analyze_meal_reliability,
+        )
+        # In production, fetch MealOutcomeEvents from Spring Boot
+        # For now, pass empty — reliability defaults to 0.5
+    except Exception:
+        pass
+
+    # Rank with food flow context
+    ranked = rank_candidates(
+        candidates,
+        protein_target=request.protein_target,
+        reliability_scores=reliability_scores,
+    )
 
     # Trim to max_results
     ranked = ranked[:request.max_results]
