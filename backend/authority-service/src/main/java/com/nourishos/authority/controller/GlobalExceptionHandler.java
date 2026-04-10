@@ -3,6 +3,7 @@ package com.nourishos.authority.controller;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,6 +18,7 @@ import com.nourishos.authority.service.inventory.LotAlreadyDepletedException;
 import com.nourishos.authority.service.inventory.LotAlreadyOpenException;
 import com.nourishos.authority.service.inventory.LotNotActiveException;
 import com.nourishos.authority.service.inventory.NegativeQuantityException;
+import com.nourishos.authority.service.planning.InvalidSustainabilityScoreException;
 import com.nourishos.authority.service.inventory.ParLevelNotFoundException;
 
 @RestControllerAdvice
@@ -46,9 +48,9 @@ public class GlobalExceptionHandler {
         return Map.of("error", ex.getMessage());
     }
 
-    @ExceptionHandler(InvalidNutritionGoalUnitException.class)
+    @ExceptionHandler({InvalidNutritionGoalUnitException.class, InvalidSustainabilityScoreException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleInvalidUnit(InvalidNutritionGoalUnitException ex) {
+    public Map<String, String> handleInvalidUnit(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
     }
 
@@ -62,5 +64,11 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public Map<String, String> handleConflict(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return Map.of("error", "Duplicate or constraint violation");
     }
 }
