@@ -50,6 +50,9 @@ public class ExecutionController {
     private final InterventionStateCache interventionCache;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
+    private final com.nourishos.authority.service.execution.ExecutionStepService executionStepService;
+    private final com.nourishos.authority.repository.MealOutcomeEventRepository mealOutcomeEventRepository;
+    private final com.nourishos.authority.service.inventory.FoodFlowSnapshotService foodFlowSnapshotService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -175,6 +178,20 @@ public class ExecutionController {
         step.setCompletedAt(Instant.now());
         stepRepository.save(step);
 
+        // Wire 19.9: Handle DISPENSE step food flow (lot allocation + consumption event)
+        ExecutionPlan currentPlan = executionPlanRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("ExecutionPlan not found: " + id));
+        if (step.getActionType() != null &&
+                (step.getActionType().startsWith("DISPENSE"))) {
+            try {
+                executionStepService.handleDispenseStepComplete(
+                        step, currentPlan.getMealPlan(),
+                        currentPlan.getMealPlan().getMealRequest().getHousehold().getId());
+            } catch (Exception e) {
+                log.warn("Food flow handling failed for step {}: {}", stepId, e.getMessage());
+            }
+        }
+
         // Update Redis session with next step index
         List<ExecutionStep> steps = stepRepository.findByPlanIdOrderByStepOrder(id);
         int nextIndex = -1;
@@ -195,6 +212,21 @@ public class ExecutionController {
             plan.setCompletedAt(Instant.now());
             executionPlanRepository.save(plan);
             sessionCache.deleteSession(id);
+
+            // Wire 19.9: Write MealOutcomeEvent COMPLETED + regenerate snapshot
+            try {
+                var outcome = new com.nourishos.authority.domain.MealOutcomeEvent();
+                outcome.setMealPlan(plan.getMealPlan());
+                outcome.setHousehold(plan.getMealPlan().getMealRequest().getHousehold());
+                outcome.setOutcome(com.nourishos.authority.domain.MealOutcome.COMPLETED);
+                mealOutcomeEventRepository.save(outcome);
+
+                UUID hhId = plan.getMealPlan().getMealRequest().getHousehold().getId();
+                foodFlowSnapshotService.generate(hhId);
+                log.info("Execution {} completed — MealOutcomeEvent COMPLETED, snapshot regenerated", id);
+            } catch (Exception e) {
+                log.warn("Post-completion food flow handling failed: {}", e.getMessage());
+            }
         }
 
         return step;
