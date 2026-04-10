@@ -11,6 +11,17 @@ from uuid import UUID
 from app.services.recommendation.candidate_builder import build_candidates
 from app.services.recommendation.meal_ranker import rank_candidates
 
+import json
+import redis
+
+REC_CACHE_TTL = 300  # 5 minutes
+
+def _get_redis():
+    try:
+        return redis.Redis(host="localhost", port=6379, decode_responses=True)
+    except Exception:
+        return None
+
 router = APIRouter(prefix="/recommendation", tags=["recommendation"])
 
 
@@ -66,7 +77,7 @@ async def rank_meals(request: RankRequest):
     # Trim to max_results
     ranked = ranked[:request.max_results]
 
-    return RankResponse(
+    response = RankResponse(
         household_id=request.household_id,
         ranked=[
             RankedMeal(
@@ -78,3 +89,14 @@ async def rank_meals(request: RankRequest):
             for r in ranked
         ],
     )
+
+    # Write to Redis cache with 5-min TTL
+    try:
+        r = _get_redis()
+        if r:
+            cache_key = f"rec:cache:{request.household_id}"
+            r.setex(cache_key, REC_CACHE_TTL, response.model_dump_json())
+    except Exception:
+        pass  # Cache write failure should not block response
+
+    return response
