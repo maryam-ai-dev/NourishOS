@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'config/app_theme.dart';
 import 'router.dart';
 
 void main() {
@@ -15,9 +16,7 @@ class NourishOSApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'NourishOS',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0B0B0F),
-      ),
+      theme: appTheme(),
       routerConfig: router,
     );
   }
