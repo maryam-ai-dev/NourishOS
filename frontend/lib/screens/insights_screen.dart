@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/app_theme.dart';
+import '../config/strings.dart';
 
 // --- Demo data models ---
 
@@ -80,11 +82,8 @@ class InsightsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0F),
       appBar: AppBar(
-        title: const Text('Insights'),
-        backgroundColor: const Color(0xFF121218),
-        foregroundColor: Colors.white,
+        title: const Text(S.insightsTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -109,10 +108,10 @@ class _WasteSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Card(
-      title: 'Waste',
+      title: S.wasteSection,
       child: metrics.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Text('Error: $err', style: const TextStyle(color: Colors.redAccent)),
+        error: (err, _) => Text('Error: $err', style: const TextStyle(color: AppColors.red1)),
         data: (m) {
           final avoided = m.wasteRatioLastWeek - m.wasteRatio;
           return Column(
@@ -123,7 +122,7 @@ class _WasteSection extends StatelessWidget {
                 children: [
                   Icon(
                     avoided > 0 ? Icons.trending_down : Icons.trending_up,
-                    color: avoided > 0 ? const Color(0xFF7CFF6B) : Colors.redAccent,
+                    color: avoided > 0 ? AppColors.green2 : AppColors.red1,
                     size: 20,
                   ),
                   const SizedBox(width: 6),
@@ -132,7 +131,7 @@ class _WasteSection extends StatelessWidget {
                         ? '${(avoided * 100).toStringAsFixed(1)}% less waste than last week'
                         : '${(avoided.abs() * 100).toStringAsFixed(1)}% more waste than last week',
                     style: TextStyle(
-                      color: avoided > 0 ? const Color(0xFF7CFF6B) : Colors.redAccent,
+                      color: avoided > 0 ? AppColors.green2 : AppColors.red1,
                       fontSize: 13,
                     ),
                   ),
@@ -140,23 +139,23 @@ class _WasteSection extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text('Current waste ratio: ${(m.wasteRatio * 100).toStringAsFixed(1)}%',
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                style: const TextStyle(color: AppColors.text3, fontSize: 12)),
               const SizedBox(height: 12),
 
               // Frequently wasted
               if (m.frequentlyWasted.isEmpty)
-                const Text('No waste events recorded', style: TextStyle(color: Colors.white38, fontSize: 12))
+                const Text(S.nothingToReport, style: TextStyle(color: AppColors.text4, fontSize: 12))
               else ...[
-                const Text('Frequently Wasted', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text('Frequently wasted', style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
                 ...m.frequentlyWasted.map((fw) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     children: [
-                      Expanded(child: Text(fw.ingredientName, style: const TextStyle(color: Colors.white70, fontSize: 13))),
-                      Text('${fw.wasteCount}x', style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600)),
+                      Expanded(child: Text(fw.ingredientName, style: const TextStyle(color: AppColors.text2, fontSize: 13))),
+                      Text('${fw.wasteCount}x', style: const TextStyle(color: AppColors.red1, fontSize: 12, fontWeight: FontWeight.w600)),
                       const SizedBox(width: 8),
-                      Text(fw.topReason, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                      Text(fw.topReason, style: const TextStyle(color: AppColors.text4, fontSize: 10)),
                     ],
                   ),
                 )),
@@ -178,10 +177,10 @@ class _NutritionReliabilitySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Card(
-      title: 'Nutrition & Reliability',
+      title: S.nutritionSection,
       child: reliability.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Text('Error: $err', style: const TextStyle(color: Colors.redAccent)),
+        error: (err, _) => Text('Error: $err', style: const TextStyle(color: AppColors.red1)),
         data: (meals) {
           // Sort by completion rate descending
           final sorted = List<_MealReliabilityItem>.from(meals)
@@ -191,42 +190,42 @@ class _NutritionReliabilitySection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Protein bar placeholder
-              const Text('Weekly Protein', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+              const Text(S.weeklyProtein, style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: 0.78,
-                  backgroundColor: Colors.white.withValues(alpha: 0.08),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF7CFF6B)),
+                  backgroundColor: AppColors.surface2,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.green2),
                   minHeight: 8,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text('78% of household goal', style: TextStyle(color: Colors.white38, fontSize: 11)),
+              const Text('78% of household goal', style: TextStyle(color: AppColors.text4, fontSize: 11)),
               const SizedBox(height: 16),
 
               // Reliable meals
-              const Text('Meal Reliability', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+              const Text(S.mealReliability, style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               ...sorted.map((meal) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Row(
                   children: [
-                    Expanded(child: Text(meal.mealName, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+                    Expanded(child: Text(meal.mealName, style: const TextStyle(color: AppColors.text2, fontSize: 13))),
                     if (meal.isLowReliability)
                       Container(
                         margin: const EdgeInsets.only(right: 6),
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.15),
+                          color: AppColors.amber1.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('LOW', style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w600)),
+                        child: const Text(S.lowReliability, style: TextStyle(color: AppColors.amber1, fontSize: 9, fontWeight: FontWeight.w600)),
                       ),
                     Text('${(meal.completionRate * 100).toInt()}%',
                       style: TextStyle(
-                        color: meal.isLowReliability ? Colors.amber : const Color(0xFF7CFF6B),
+                        color: meal.isLowReliability ? AppColors.amber1 : AppColors.green2,
                         fontSize: 13, fontWeight: FontWeight.w600,
                       )),
                   ],
@@ -249,10 +248,10 @@ class _ReplenishmentSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Card(
-      title: 'Replenishment Patterns',
+      title: S.replenishmentSection,
       child: patterns.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Text('Error: $err', style: const TextStyle(color: Colors.redAccent)),
+        error: (err, _) => Text('Error: $err', style: const TextStyle(color: AppColors.red1)),
         data: (items) {
           final restocked = List<_ReplenishmentPattern>.from(items)
             ..sort((a, b) => b.restockCount.compareTo(a.restockCount));
@@ -263,61 +262,61 @@ class _ReplenishmentSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Most frequently restocked
-              const Text('Most Restocked', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+              const Text(S.mostRestocked, style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               if (restocked.isEmpty)
-                const Text('Nothing to report', style: TextStyle(color: Colors.white38, fontSize: 12))
+                const Text(S.nothingToReport, style: TextStyle(color: AppColors.text4, fontSize: 12))
               else
                 ...restocked.map((p) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     children: [
-                      Expanded(child: Text(p.ingredientName, style: const TextStyle(color: Colors.white70, fontSize: 13))),
-                      Text('${p.restockCount}x', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      Expanded(child: Text(p.ingredientName, style: const TextStyle(color: AppColors.text2, fontSize: 13))),
+                      Text('${p.restockCount}x', style: const TextStyle(color: AppColors.text3, fontSize: 12)),
                     ],
                   ),
                 )),
               const SizedBox(height: 14),
 
               // Over-bought
-              const Text('Consider Buying Less', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+              const Text(S.considerBuyingLess, style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               if (overBought.isEmpty)
-                const Text('Nothing to report', style: TextStyle(color: Colors.white38, fontSize: 12))
+                const Text(S.nothingToReport, style: TextStyle(color: AppColors.text4, fontSize: 12))
               else
                 ...overBought.map((p) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     children: [
-                      Expanded(child: Text(p.ingredientName, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+                      Expanded(child: Text(p.ingredientName, style: const TextStyle(color: AppColors.text2, fontSize: 13))),
                       if (p.recurringWaste)
                         Container(
                           margin: const EdgeInsets.only(right: 4),
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
-                            color: Colors.redAccent.withValues(alpha: 0.15),
+                            color: AppColors.red1.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text('WASTE', style: TextStyle(color: Colors.redAccent, fontSize: 9, fontWeight: FontWeight.w600)),
+                          child: const Text(S.wastedRecently, style: TextStyle(color: AppColors.red1, fontSize: 9, fontWeight: FontWeight.w600)),
                         ),
-                      const Text('over-bought', style: TextStyle(color: Colors.amber, fontSize: 11)),
+                      const Text('over-bought', style: TextStyle(color: AppColors.amber1, fontSize: 11)),
                     ],
                   ),
                 )),
               const SizedBox(height: 14),
 
               // Waste-adjusted suggestions
-              const Text('Waste-Adjusted Orders', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+              const Text('Waste-adjusted orders', style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               if (wasteAdjusted.isEmpty)
-                const Text('Nothing to report', style: TextStyle(color: Colors.white38, fontSize: 12))
+                const Text(S.nothingToReport, style: TextStyle(color: AppColors.text4, fontSize: 12))
               else
                 ...wasteAdjusted.map((p) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     children: [
-                      Expanded(child: Text(p.ingredientName, style: const TextStyle(color: Colors.white70, fontSize: 13))),
-                      const Text('qty adjusted', style: TextStyle(color: Colors.amber, fontSize: 11)),
+                      Expanded(child: Text(p.ingredientName, style: const TextStyle(color: AppColors.text2, fontSize: 13))),
+                      const Text(S.qtyAdjusted, style: TextStyle(color: AppColors.amber1, fontSize: 11)),
                     ],
                   ),
                 )),
@@ -341,14 +340,14 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF121218),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        boxShadow: AppShadows.xs,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(title, style: const TextStyle(color: AppColors.text1, fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 12),
           child,
         ],

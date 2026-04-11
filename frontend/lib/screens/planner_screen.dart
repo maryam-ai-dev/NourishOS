@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/app_theme.dart';
+import '../config/strings.dart';
 import '../services/intelligence_service.dart';
 import '../services/service_exception.dart';
 import '../providers/providers.dart';
@@ -28,18 +30,15 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
     final missing = (proposal?['missingIngredients'] as List?) ?? [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0F),
       appBar: AppBar(
-        title: const Text('Weekly Planner'),
-        backgroundColor: const Color(0xFF121218),
-        foregroundColor: Colors.white,
+        title: const Text(S.plannerTitle),
         actions: [
           if (proposal != null)
             TextButton(
               onPressed: _confirming ? null : _confirmPlan,
               child: _confirming
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Confirm', style: TextStyle(color: Color(0xFF7CFF6B))),
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text(S.confirmPlan, style: TextStyle(color: AppColors.green1)),
             ),
         ],
       ),
@@ -51,11 +50,14 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _generating ? null : _generatePlan,
-        backgroundColor: const Color(0xFF9B5CFF),
+        backgroundColor: AppColors.green1,
         icon: _generating
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
             : const Icon(Icons.auto_awesome, color: Colors.white),
-        label: Text(_generating ? 'Generating...' : 'Generate Plan', style: const TextStyle(color: Colors.white)),
+        label: Text(
+          _generating ? S.loading : S.generatePlan,
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
     );
   }
@@ -73,7 +75,7 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
       ref.read(weeklyPlanProposalProvider.notifier).state = result;
     } on ServiceException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.message}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${S.error}: ${e.message}')));
       }
     } finally {
       if (mounted) setState(() => _generating = false);
@@ -85,7 +87,7 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
     try {
       // In production, POST confirmed schedule to Spring Boot
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plan confirmed!')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(S.confirmPlan)));
       }
     } finally {
       if (mounted) setState(() => _confirming = false);
@@ -117,7 +119,7 @@ class _PlannerGrid extends StatelessWidget {
               for (final day in _days)
                 Expanded(
                   child: Center(
-                    child: Text(day, style: const TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w600)),
+                    child: Text(day, style: const TextStyle(color: AppColors.text3, fontSize: 11, fontWeight: FontWeight.w600)),
                   ),
                 ),
             ],
@@ -133,7 +135,7 @@ class _PlannerGrid extends StatelessWidget {
                     width: 60,
                     child: Text(
                       _mealTypes[mealIdx][0] + _mealTypes[mealIdx].substring(1).toLowerCase(),
-                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      style: const TextStyle(color: AppColors.text4, fontSize: 11),
                     ),
                   ),
                   for (var dayIdx = 1; dayIdx <= 7; dayIdx++)
@@ -158,12 +160,12 @@ class _SlotCell extends StatelessWidget {
         margin: const EdgeInsets.all(2),
         height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFF171720),
+          color: AppColors.surface2,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: AppColors.surface2),
         ),
         child: const Center(
-          child: Text('—', style: TextStyle(color: Colors.white24, fontSize: 12)),
+          child: Text('—', style: TextStyle(color: AppColors.text4, fontSize: 12)),
         ),
       );
     }
@@ -177,9 +179,9 @@ class _SlotCell extends StatelessWidget {
       height: 56,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF121218),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFF9B5CFF).withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.green1.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,16 +189,16 @@ class _SlotCell extends StatelessWidget {
         children: [
           Text(
             name.length > 10 ? '${name.substring(0, 10)}...' : name,
-            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w500),
+            style: const TextStyle(color: AppColors.text1, fontSize: 9, fontWeight: FontWeight.w500),
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Row(
             children: [
               if (protein != null)
-                _MiniBadge(label: '${(protein as num).toInt()}g', color: Colors.teal),
+                _MiniBadge(label: '${(protein as num).toInt()}g', color: AppColors.green2),
               if (perishable)
-                const _MiniBadge(label: '!', color: Colors.amber),
+                const _MiniBadge(label: '!', color: AppColors.amber1),
             ],
           ),
         ],
@@ -233,31 +235,31 @@ class _MissingIngredientsPanel extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF171720),
-        border: Border(top: BorderSide(color: Colors.white12)),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        border: Border(top: BorderSide(color: AppColors.surface2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Missing Ingredients', style: TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.w600)),
+          const Text(S.missingIngredients, style: TextStyle(color: AppColors.amber1, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Text('${missing.length} item(s) needed', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          Text('${missing.length} item(s) needed', style: const TextStyle(color: AppColors.text3, fontSize: 12)),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Restock request submitted')),
+                  const SnackBar(content: Text(S.restockSubmitted)),
                 );
               },
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF7CFF6B),
-                side: const BorderSide(color: Color(0xFF7CFF6B)),
+                foregroundColor: AppColors.green1,
+                side: const BorderSide(color: AppColors.green1),
               ),
-              child: const Text('Approve Restock'),
+              child: const Text(S.approveRestock),
             ),
           ),
         ],

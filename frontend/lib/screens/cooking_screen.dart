@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/app_theme.dart';
+import '../config/strings.dart';
 import '../services/service_exception.dart';
 
 /// Demo execution plan data. In production, fetched from Spring Boot.
@@ -81,7 +83,7 @@ class _CookingScreenState extends ConsumerState<CookingScreen> {
     showModalBottomSheet(
       context: context,
       isDismissible: false,
-      backgroundColor: const Color(0xFF171720),
+      backgroundColor: AppColors.surface2,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) => _InterventionSheet(
         interventionId: _activeIntervention!,
@@ -107,16 +109,13 @@ class _CookingScreenState extends ConsumerState<CookingScreen> {
   @override
   Widget build(BuildContext context) {
     final totalDuration = _plan['estimatedDurationSeconds'] as int? ?? 0;
-    final mealName = _plan['mealName'] as String? ?? 'Cooking';
+    final mealName = _plan['mealName'] as String? ?? S.cookingTitle;
     final servings = _plan['servings'] as int? ?? 0;
     final status = _plan['status'] as String? ?? 'IDLE';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0F),
       appBar: AppBar(
         title: Text(mealName),
-        backgroundColor: const Color(0xFF121218),
-        foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -131,7 +130,7 @@ class _CookingScreenState extends ConsumerState<CookingScreen> {
           const SizedBox(height: 16),
 
           // Step list
-          const Text('Steps', style: TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w600)),
+          const Text('Steps', style: TextStyle(color: AppColors.text3, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           ..._steps.map((step) => _StepTile(
             step: step,
@@ -160,9 +159,9 @@ class _OverviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF121218),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppColors.surface2),
       ),
       child: Column(
         children: [
@@ -170,17 +169,17 @@ class _OverviewCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _StatusChip(status: status),
-              Text('$servings servings', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              Text('$servings servings', style: const TextStyle(color: AppColors.text3, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total: ${_formatTime(totalDuration)}', style: const TextStyle(color: Colors.white38, fontSize: 12)),
+              Text('Total: ${_formatTime(totalDuration)}', style: const TextStyle(color: AppColors.text4, fontSize: 12)),
               if (remainingSeconds > 0)
                 Text('Remaining: ${_formatTime(remainingSeconds)}',
-                  style: const TextStyle(color: Color(0xFF4DA8FF), fontSize: 14, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(color: AppColors.green1, fontSize: 14, fontWeight: FontWeight.w600)),
             ],
           ),
         ],
@@ -201,11 +200,11 @@ class _StatusChip extends StatelessWidget {
 
   Color get _color {
     switch (status) {
-      case 'IN_PROGRESS': return const Color(0xFF4DA8FF);
-      case 'COMPLETED': return const Color(0xFF7CFF6B);
-      case 'PAUSED': return Colors.amber;
-      case 'FAILED': case 'ABORTED': return Colors.redAccent;
-      default: return Colors.white38;
+      case 'IN_PROGRESS': return AppColors.green1;
+      case 'COMPLETED': return AppColors.green2;
+      case 'PAUSED': return AppColors.amber1;
+      case 'FAILED': case 'ABORTED': return AppColors.red1;
+      default: return AppColors.text4;
     }
   }
 
@@ -235,16 +234,16 @@ class _StepTile extends StatelessWidget {
     final duration = step['estimatedDurationSeconds'] as int? ?? 0;
 
     final isUser = assignedTo == 'USER';
-    final chipColor = isUser ? Colors.amber : const Color(0xFF4DA8FF);
+    final chipColor = isUser ? AppColors.amber1 : AppColors.green1;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF171720) : const Color(0xFF121218),
+        color: isActive ? AppColors.surface2 : AppColors.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isActive ? const Color(0xFF4DA8FF).withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.06),
+          color: isActive ? AppColors.green1.withValues(alpha: 0.4) : AppColors.surface2,
         ),
       ),
       child: Row(
@@ -255,13 +254,13 @@ class _StepTile extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: status == 'COMPLETE'
-                  ? const Color(0xFF7CFF6B).withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.05),
+                  ? AppColors.green2.withValues(alpha: 0.2)
+                  : AppColors.surface2,
             ),
             child: Center(
               child: status == 'COMPLETE'
-                  ? const Icon(Icons.check, size: 16, color: Color(0xFF7CFF6B))
-                  : Text('$order', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  ? const Icon(Icons.check, size: 16, color: AppColors.green2)
+                  : Text('$order', style: const TextStyle(color: AppColors.text3, fontSize: 12)),
             ),
           ),
           const SizedBox(width: 12),
@@ -271,9 +270,9 @@ class _StepTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(action, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                Text(action, style: const TextStyle(color: AppColors.text1, fontSize: 13)),
                 const SizedBox(height: 2),
-                Text('${duration}s', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                Text('${duration}s', style: const TextStyle(color: AppColors.text4, fontSize: 11)),
               ],
             ),
           ),
@@ -291,7 +290,7 @@ class _StepTile extends StatelessWidget {
           // Active timer
           if (isActive && remainingSeconds != null) ...[
             const SizedBox(width: 8),
-            Text('${remainingSeconds}s', style: const TextStyle(color: Color(0xFF4DA8FF), fontSize: 13, fontWeight: FontWeight.bold)),
+            Text('${remainingSeconds}s', style: const TextStyle(color: AppColors.green1, fontSize: 13, fontWeight: FontWeight.bold)),
           ],
         ],
       ),
@@ -312,24 +311,19 @@ class _InterventionSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.pan_tool, color: Colors.amber, size: 40),
+          const Icon(Icons.pan_tool, color: AppColors.amber1, size: 40),
           const SizedBox(height: 16),
-          const Text('User Action Required',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+          const Text(S.userActionRequired,
+            style: TextStyle(color: AppColors.text1, fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          const Text('Please complete the required step and tap Done when ready.',
-            style: TextStyle(color: Colors.white54, fontSize: 14), textAlign: TextAlign.center),
+          const Text(S.tapWhenDone,
+            style: TextStyle(color: AppColors.text3, fontSize: 14), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: onResolved,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7CFF6B),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              child: const Text(S.done, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
             ),
           ),
         ],

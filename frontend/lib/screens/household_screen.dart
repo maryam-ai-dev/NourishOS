@@ -4,6 +4,7 @@ import '../providers/providers.dart';
 import '../models/household.dart';
 import '../services/authority_service.dart';
 import '../services/service_exception.dart';
+import '../config/app_theme.dart';
 
 class HouseholdScreen extends ConsumerStatefulWidget {
   const HouseholdScreen({super.key});
@@ -20,14 +21,11 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final String id = _householdId ?? ref.watch(householdIdProvider) ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0F),
       appBar: AppBar(
         title: const Text('Household'),
-        backgroundColor: const Color(0xFF121218),
-        foregroundColor: Colors.white,
       ),
       body: id.isEmpty
-          ? const Center(child: Text('No household selected', style: TextStyle(color: Colors.white54)))
+          ? const Center(child: Text('No household selected', style: TextStyle(color: AppColors.text3)))
           : _MembersList(householdId: id),
     );
   }
@@ -44,7 +42,7 @@ class _MembersList extends ConsumerWidget {
     return members.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, _) => Center(
-        child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent)),
+        child: Text('Error: $err', style: const TextStyle(color: AppColors.red1)),
       ),
       data: (memberList) => ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -70,9 +68,9 @@ class _MemberCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF121218),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppColors.surface2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,21 +79,21 @@ class _MemberCard extends StatelessWidget {
             children: [
               Text(
                 member.displayName,
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: AppColors.text1, fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const SizedBox(width: 8),
-              _Badge(label: member.ageGroup, color: member.ageGroup == 'CHILD' ? Colors.blue : Colors.teal),
+              _Badge(label: member.ageGroup, color: member.ageGroup == 'CHILD' ? AppColors.green1 : AppColors.green2),
             ],
           ),
           const SizedBox(height: 8),
           if (member.effortSensitivity != null)
-            Text('Effort: ${member.effortSensitivity}', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            Text('Effort: ${member.effortSensitivity}', style: const TextStyle(color: AppColors.text3, fontSize: 13)),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => _showPreferenceEditor(context),
-              child: const Text('Edit Preferences', style: TextStyle(color: Color(0xFF9B5CFF))),
+              child: const Text('Edit Preferences', style: TextStyle(color: AppColors.green1)),
             ),
           ),
         ],
@@ -106,7 +104,7 @@ class _MemberCard extends StatelessWidget {
   void _showPreferenceEditor(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF171720),
+      backgroundColor: AppColors.surface2,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -168,19 +166,19 @@ class _PreferenceFormState extends State<_PreferenceForm> {
         children: [
           Text(
             'Preferences — ${widget.memberName}',
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+            style: const TextStyle(color: AppColors.text1, fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _proteinController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppColors.text1),
             decoration: InputDecoration(
               labelText: 'Protein goal (g)',
-              labelStyle: const TextStyle(color: Colors.white54),
+              labelStyle: const TextStyle(color: AppColors.text3),
               errorText: _proteinError,
-              enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-              focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF9B5CFF))),
+              enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.text4)),
+              focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.green1)),
             ),
           ),
           const SizedBox(height: 24),
@@ -188,10 +186,6 @@ class _PreferenceFormState extends State<_PreferenceForm> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _saving ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF9B5CFF),
-                foregroundColor: Colors.white,
-              ),
               child: _saving
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Save'),

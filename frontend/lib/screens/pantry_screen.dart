@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/app_theme.dart';
+import '../config/strings.dart';
 
 /// Lot model for pantry display.
 class _Lot {
@@ -51,15 +53,12 @@ class PantryScreen extends ConsumerWidget {
     final lotsAsync = ref.watch(pantryLotsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0F),
       appBar: AppBar(
-        title: const Text('Pantry'),
-        backgroundColor: const Color(0xFF121218),
-        foregroundColor: Colors.white,
+        title: const Text(S.pantryTitle),
       ),
       body: lotsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.redAccent))),
+        error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.red1))),
         data: (lots) {
           final fridge = lots.where((l) => l.location == 'FRIDGE' && !l.isDepleted).toList();
           final freezer = lots.where((l) => l.location == 'FREEZER' && !l.isDepleted).toList();
@@ -80,15 +79,15 @@ class PantryScreen extends ConsumerWidget {
               // Alert banner
               _AlertBanner(lots: lots),
               const SizedBox(height: 12),
-              _ZoneSection(title: 'Fridge', icon: Icons.kitchen, lots: fridge),
-              _ZoneSection(title: 'Freezer', icon: Icons.ac_unit, lots: freezer),
-              _ZoneSection(title: 'Pantry', icon: Icons.shelves, lots: pantry),
-              _ZoneSection(title: 'Opened', icon: Icons.lock_open, lots: opened),
+              _ZoneSection(title: S.fridge, icon: Icons.kitchen, lots: fridge),
+              _ZoneSection(title: S.freezer, icon: Icons.ac_unit, lots: freezer),
+              _ZoneSection(title: S.pantry, icon: Icons.shelves, lots: pantry),
+              _ZoneSection(title: S.opened, icon: Icons.lock_open, lots: opened),
               if (lots.isEmpty)
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
-                    child: Text('No items in pantry', style: TextStyle(color: Colors.white38, fontSize: 16)),
+                    child: Text(S.noPantryItems, style: TextStyle(color: AppColors.text4, fontSize: 16)),
                   ),
                 ),
             ],
@@ -113,20 +112,20 @@ class _AlertBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.1),
+        color: AppColors.amber1.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.amber1.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber, color: Colors.amber, size: 20),
+          const Icon(Icons.warning_amber, color: AppColors.amber1, size: 20),
           const SizedBox(width: 8),
           if (lowStock > 0)
-            Text('$lowStock low stock', style: const TextStyle(color: Colors.amber, fontSize: 13)),
+            Text('$lowStock ${S.lowStock}', style: const TextStyle(color: AppColors.amber1, fontSize: 13)),
           if (lowStock > 0 && nearExpiry > 0)
-            const Text('  ·  ', style: TextStyle(color: Colors.white24)),
+            const Text('  ·  ', style: TextStyle(color: AppColors.text4)),
           if (nearExpiry > 0)
-            Text('$nearExpiry expiring', style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+            Text('$nearExpiry ${S.expiringSoon}', style: const TextStyle(color: AppColors.red1, fontSize: 13)),
         ],
       ),
     );
@@ -150,11 +149,11 @@ class _ZoneSection extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              Icon(icon, color: Colors.white38, size: 18),
+              Icon(icon, color: AppColors.text4, size: 18),
               const SizedBox(width: 6),
-              Text(title, style: const TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(title, style: const TextStyle(color: AppColors.text3, fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(width: 6),
-              Text('(${lots.length})', style: const TextStyle(color: Colors.white24, fontSize: 12)),
+              Text('(${lots.length})', style: const TextStyle(color: AppColors.text4, fontSize: 12)),
             ],
           ),
         ),
@@ -171,9 +170,9 @@ class _LotCard extends StatelessWidget {
 
   Color get _freshnessColor {
     switch (lot.freshness) {
-      case 'EXPIRED': return Colors.redAccent;
-      case 'NEAR_EXPIRY': return Colors.amber;
-      default: return const Color(0xFF7CFF6B);
+      case 'EXPIRED': return AppColors.red1;
+      case 'NEAR_EXPIRY': return AppColors.amber1;
+      default: return AppColors.green2;
     }
   }
 
@@ -185,9 +184,9 @@ class _LotCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF121218),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          border: Border.all(color: AppColors.surface2),
         ),
         child: Row(
           children: [
@@ -195,9 +194,9 @@ class _LotCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(lot.ingredientName, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  Text(lot.ingredientName, style: const TextStyle(color: AppColors.text1, fontSize: 14)),
                   const SizedBox(height: 4),
-                  Text('${lot.quantity} ${lot.unit}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text('${lot.quantity} ${lot.unit}', style: const TextStyle(color: AppColors.text3, fontSize: 12)),
                 ],
               ),
             ),
@@ -206,9 +205,9 @@ class _LotCard extends StatelessWidget {
               spacing: 4,
               children: [
                 _FreshBadge(label: lot.freshness, color: _freshnessColor),
-                if (lot.isOpen) const _FreshBadge(label: 'OPENED', color: Colors.blue),
-                if (lot.isRecurringWaste) const _FreshBadge(label: 'WASTE', color: Colors.redAccent),
-                if (lot.belowParLevel) const _FreshBadge(label: 'LOW', color: Colors.amber),
+                if (lot.isOpen) const _FreshBadge(label: 'OPENED', color: AppColors.green2),
+                if (lot.isRecurringWaste) const _FreshBadge(label: 'WASTE', color: AppColors.red1),
+                if (lot.belowParLevel) const _FreshBadge(label: 'LOW', color: AppColors.amber1),
               ],
             ),
           ],
@@ -220,7 +219,7 @@ class _LotCard extends StatelessWidget {
   void _showParLevelEditor(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF171720),
+      backgroundColor: AppColors.surface2,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) => _ParLevelForm(ingredientName: lot.ingredientName, lotId: lot.id),
     );
@@ -267,42 +266,41 @@ class _ParLevelFormState extends State<_ParLevelForm> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Par Level — ${widget.ingredientName}',
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text('${S.yourUsualAmount} — ${widget.ingredientName}',
+            style: const TextStyle(color: AppColors.text1, fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 16),
           TextField(
             controller: _minCtrl,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppColors.text1),
             decoration: const InputDecoration(
               labelText: 'Minimum Quantity',
-              labelStyle: TextStyle(color: Colors.white54),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF9B5CFF))),
+              labelStyle: TextStyle(color: AppColors.text3),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.text4)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.green1)),
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _prefCtrl,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppColors.text1),
             decoration: const InputDecoration(
               labelText: 'Preferred Quantity',
-              labelStyle: TextStyle(color: Colors.white54),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF9B5CFF))),
+              labelStyle: TextStyle(color: AppColors.text3),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.text4)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.green1)),
             ),
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+            Text(_error!, style: const TextStyle(color: AppColors.red1, fontSize: 12)),
           ],
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _save,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9B5CFF), foregroundColor: Colors.white),
               child: const Text('Save Par Level'),
             ),
           ),
@@ -320,7 +318,7 @@ class _ParLevelFormState extends State<_ParLevelForm> {
       return;
     }
     if (minVal > prefVal) {
-      setState(() => _error = 'Minimum must be ≤ preferred');
+      setState(() => _error = 'Minimum must be \u2264 preferred');
       return;
     }
     setState(() => _error = null);

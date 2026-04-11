@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/app_theme.dart';
+import '../config/strings.dart';
 
 /// Demo suggestion data. In production, fetched from Spring Boot GET /replenishment/suggestions.
 class _Suggestion {
@@ -46,21 +48,18 @@ class ReordersScreen extends ConsumerWidget {
     final pending = suggestions.where((s) => s.status == 'PENDING').toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0F),
       appBar: AppBar(
-        title: const Text('Reorders'),
-        backgroundColor: const Color(0xFF121218),
-        foregroundColor: Colors.white,
+        title: const Text(S.reordersTitle),
         actions: [
           if (pending.isNotEmpty)
             TextButton(
               onPressed: () => _approveAll(ref, suggestions),
-              child: const Text('Approve All', style: TextStyle(color: Color(0xFF7CFF6B))),
+              child: const Text(S.approveAll, style: TextStyle(color: AppColors.green2)),
             ),
         ],
       ),
       body: suggestions.isEmpty
-          ? const Center(child: Text('No suggestions', style: TextStyle(color: Colors.white38, fontSize: 16)))
+          ? const Center(child: Text(S.noSuggestions, style: TextStyle(color: AppColors.text4, fontSize: 16)))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: suggestions.length,
@@ -100,18 +99,18 @@ class _SuggestionCard extends StatelessWidget {
 
   Color get _urgencyColor {
     switch (suggestion.urgency) {
-      case 'CRITICAL': return Colors.redAccent;
-      case 'WARNING': return Colors.amber;
-      default: return Colors.white38;
+      case 'CRITICAL': return AppColors.red1;
+      case 'WARNING': return AppColors.amber1;
+      default: return AppColors.text4;
     }
   }
 
   Color get _statusColor {
     switch (suggestion.status) {
-      case 'APPROVED': return const Color(0xFF7CFF6B);
-      case 'REJECTED': return Colors.redAccent;
-      case 'DEFERRED': return Colors.amber;
-      default: return Colors.white38;
+      case 'APPROVED': return AppColors.green2;
+      case 'REJECTED': return AppColors.red1;
+      case 'DEFERRED': return AppColors.amber1;
+      default: return AppColors.text4;
     }
   }
 
@@ -121,9 +120,9 @@ class _SuggestionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF121218),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: AppColors.surface2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +132,7 @@ class _SuggestionCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(suggestion.ingredientName,
-                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
+                  style: const TextStyle(color: AppColors.text1, fontSize: 15, fontWeight: FontWeight.w500)),
               ),
               _Badge(label: suggestion.urgency, color: _urgencyColor),
               const SizedBox(width: 6),
@@ -144,7 +143,7 @@ class _SuggestionCard extends StatelessWidget {
 
           // Quantity
           Text('${suggestion.quantity} ${suggestion.unit}',
-            style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            style: const TextStyle(color: AppColors.text3, fontSize: 13)),
 
           // Waste adjustment label
           if (suggestion.adjustedForWaste) ...[
@@ -152,11 +151,11 @@ class _SuggestionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.1),
+                color: AppColors.amber3,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text('adjusted for waste history',
-                style: TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.w500)),
+              child: const Text(S.reducedWasted,
+                style: TextStyle(color: AppColors.amber1, fontSize: 11, fontWeight: FontWeight.w500)),
             ),
           ],
 
@@ -164,7 +163,7 @@ class _SuggestionCard extends StatelessWidget {
           if (suggestion.explanation != null) ...[
             const SizedBox(height: 6),
             Text(suggestion.explanation!,
-              style: const TextStyle(color: Colors.white38, fontSize: 12, fontStyle: FontStyle.italic)),
+              style: const TextStyle(color: AppColors.text4, fontSize: 12, fontStyle: FontStyle.italic)),
           ],
 
           // Action buttons (only for PENDING)
@@ -173,14 +172,14 @@ class _SuggestionCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(onPressed: onDefer, child: const Text('Defer', style: TextStyle(color: Colors.white38, fontSize: 12))),
+                TextButton(onPressed: onDefer, child: const Text('Defer', style: TextStyle(color: AppColors.text4, fontSize: 12))),
                 const SizedBox(width: 8),
-                TextButton(onPressed: onReject, child: const Text('Reject', style: TextStyle(color: Colors.redAccent, fontSize: 12))),
+                TextButton(onPressed: onReject, child: const Text('Reject', style: TextStyle(color: AppColors.red1, fontSize: 12))),
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: onApprove,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7CFF6B), foregroundColor: Colors.black,
+                    backgroundColor: AppColors.green2, foregroundColor: AppColors.text1,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     minimumSize: Size.zero,
                   ),
