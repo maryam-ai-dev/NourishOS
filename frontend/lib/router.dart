@@ -91,11 +91,12 @@ class ScaffoldWithNavBar extends StatelessWidget {
         currentIndex: index,
         onTap: (i) => GoRouter.of(context).go(_tabs[i].$1),
         type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF121218),
-        selectedItemColor: const Color(0xFF9B5CFF),
-        unselectedItemColor: Colors.white54,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF2D6A4F),
+        unselectedItemColor: const Color(0xFFA8BAAA),
         selectedFontSize: 11,
         unselectedFontSize: 10,
+        showUnselectedLabels: false,
         items: _tabs
             .map((t) => BottomNavigationBarItem(icon: Icon(t.$2), label: t.$3))
             .toList(),
