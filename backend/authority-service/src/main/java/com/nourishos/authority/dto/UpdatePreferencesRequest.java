@@ -14,4 +14,7 @@ public class UpdatePreferencesRequest {
     private Integer proteinGoalGrams;
     private List<String> preferredMealTypes;
     private List<NutritionGoal> nutritionGoals;
+    private List<String> favouriteDishes;
+    private List<String> dislikedDishes;
+    private List<String> favouriteCuisines;
 }

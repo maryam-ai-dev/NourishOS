@@ -52,4 +52,16 @@ public class MemberPreferenceProfile {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "nutrition_goals", nullable = false, columnDefinition = "jsonb")
     private String nutritionGoals = "[]";
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "favourite_dishes", nullable = false, columnDefinition = "jsonb")
+    private String favouriteDishes = "[]";
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "disliked_dishes", nullable = false, columnDefinition = "jsonb")
+    private String dislikedDishes = "[]";
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "favourite_cuisines", nullable = false, columnDefinition = "jsonb")
+    private String favouriteCuisines = "[]";
 }

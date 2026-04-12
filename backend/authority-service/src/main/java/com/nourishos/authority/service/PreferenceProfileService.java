@@ -50,6 +50,15 @@ public class PreferenceProfileService {
             validateNutritionGoalUnits(request.getNutritionGoals());
             profile.setNutritionGoals(toJson(request.getNutritionGoals()));
         }
+        if (request.getFavouriteDishes() != null) {
+            profile.setFavouriteDishes(toJson(request.getFavouriteDishes()));
+        }
+        if (request.getDislikedDishes() != null) {
+            profile.setDislikedDishes(toJson(request.getDislikedDishes()));
+        }
+        if (request.getFavouriteCuisines() != null) {
+            profile.setFavouriteCuisines(toJson(request.getFavouriteCuisines()));
+        }
 
         return profileRepository.save(profile);
     }
