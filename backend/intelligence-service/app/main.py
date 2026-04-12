@@ -8,6 +8,8 @@ from app.api.substitution import router as substitution_router
 from app.api.forecasting import router as forecasting_router
 from app.api.execution import router as execution_router
 from app.api.explanations import router as explanations_router
+from app.api.pantry import router as pantry_router
+from app.api.agent import router as agent_router
 
 app = FastAPI(
     title="NourishOS Intelligence Service",
@@ -24,6 +26,8 @@ app.include_router(substitution_router)
 app.include_router(forecasting_router)
 app.include_router(execution_router)
 app.include_router(explanations_router)
+app.include_router(pantry_router)
+app.include_router(agent_router)
 
 
 @app.get("/health")

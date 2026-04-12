@@ -46,6 +46,9 @@ public class ReplenishmentRequest {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "shopping_mode", nullable = false, length = 20)
+    private String shoppingMode = "IN_STORE";
+
     @jakarta.persistence.PrePersist
     void prePersist() {
         if (createdAt == null) {
