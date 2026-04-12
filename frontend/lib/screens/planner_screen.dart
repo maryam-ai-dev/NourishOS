@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/app_theme.dart';
 import '../config/strings.dart';
 import '../services/intelligence_service.dart';
 import '../services/service_exception.dart';
 import '../providers/providers.dart';
 
-const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const _mealTypes = ['BREAKFAST', 'LUNCH', 'DINNER'];
+const _mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+const _mealEmojis = {'Breakfast': '🍳', 'Lunch': '🥗', 'Dinner': '🍽️'};
 
-/// Provider for the generated weekly plan proposal (before user confirms).
 final weeklyPlanProposalProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
+final selectedMemberProvider = StateProvider<String?>((ref) => null);
 
 class WeeklyPlannerScreen extends ConsumerStatefulWidget {
   const WeeklyPlannerScreen({super.key});
@@ -21,43 +22,51 @@ class WeeklyPlannerScreen extends ConsumerStatefulWidget {
 
 class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
   bool _generating = false;
-  bool _confirming = false;
 
   @override
   Widget build(BuildContext context) {
     final proposal = ref.watch(weeklyPlanProposalProvider);
     final slots = (proposal?['slots'] as List?) ?? [];
-    final missing = (proposal?['missingIngredients'] as List?) ?? [];
+    final hasPlan = slots.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(S.plannerTitle),
-        actions: [
-          if (proposal != null)
-            TextButton(
-              onPressed: _confirming ? null : _confirmPlan,
-              child: _confirming
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text(S.confirmPlan, style: TextStyle(color: AppColors.green1)),
-            ),
-        ],
-      ),
+      appBar: AppBar(title: Text(S.plannerTitle)),
       body: Column(
         children: [
-          Expanded(child: _PlannerGrid(slots: slots)),
-          if (missing.isNotEmpty) _MissingIngredientsPanel(missing: missing),
+          // Member filter chips (Sprint 23B.6)
+          _MemberFilterChips(),
+          // Horizontal scrolling day grid (Sprint 23B.5)
+          Expanded(child: _HorizontalPlannerGrid(slots: slots)),
+          // Generate / Regenerate button (Sprint 23B.7)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _generating ? null : _generatePlan,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: _generating
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text(
+                            hasPlan ? '🔄 Regenerate whole week' : '✨ Generate my week\'s plan',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Based on your household's preferences, allergies, and what's in your fridge",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.text3, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _generating ? null : _generatePlan,
-        backgroundColor: AppColors.green1,
-        icon: _generating
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : const Icon(Icons.auto_awesome, color: Colors.white),
-        label: Text(
-          _generating ? S.loading : S.generatePlan,
-          style: const TextStyle(color: Colors.white),
-        ),
       ),
     );
   }
@@ -81,188 +90,288 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
       if (mounted) setState(() => _generating = false);
     }
   }
+}
 
-  Future<void> _confirmPlan() async {
-    setState(() => _confirming = true);
-    try {
-      // In production, POST confirmed schedule to Spring Boot
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(S.confirmPlan)));
-      }
-    } finally {
-      if (mounted) setState(() => _confirming = false);
-    }
+// --- Sprint 23B.6: Member filter chips ---
+class _MemberFilterChips extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedMemberProvider);
+    final chips = ['Everyone', 'Maryam', 'Ahmed', 'Zara'];
+
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final name = chips[i];
+          final isSelected = (selected == null && i == 0) || selected == name;
+          return GestureDetector(
+            onTap: () {
+              ref.read(selectedMemberProvider.notifier).state = i == 0 ? null : name;
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.green1 : AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+                border: Border.all(color: isSelected ? AppColors.green1 : AppColors.surface2),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (i > 0) const Text('👤', style: TextStyle(fontSize: 11)),
+                  if (i > 0) const SizedBox(width: 4),
+                  Text(name, style: TextStyle(
+                    color: isSelected ? Colors.white : AppColors.text2,
+                    fontSize: 12, fontWeight: FontWeight.w600,
+                  )),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
-class _PlannerGrid extends StatelessWidget {
+// --- Sprint 23B.5: Horizontal scrolling planner grid ---
+class _HorizontalPlannerGrid extends StatelessWidget {
   final List<dynamic> slots;
-  const _PlannerGrid({required this.slots});
+  const _HorizontalPlannerGrid({required this.slots});
 
   Map<String, dynamic>? _findSlot(int day, String mealType) {
+    final mt = mealType.toUpperCase();
     for (final s in slots) {
-      if (s['day'] == day && s['mealType'] == mealType) return s as Map<String, dynamic>;
+      if (s['day'] == day && s['mealType'] == mt) return s as Map<String, dynamic>;
     }
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final todayIdx = now.weekday;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        children: [
-          // Header row
-          Row(
-            children: [
-              const SizedBox(width: 60),
-              for (final day in _days)
-                Expanded(
-                  child: Center(
-                    child: Text(day, style: const TextStyle(color: AppColors.text3, fontSize: 11, fontWeight: FontWeight.w600)),
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: List.generate(7, (i) {
+          final day = i + 1;
+          final date = monday.add(Duration(days: i));
+          final dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i];
+          final isToday = day == todayIdx;
+
+          return Container(
+            width: 130,
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Day header
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(dayName, style: TextStyle(color: AppColors.text3, fontSize: 11, fontWeight: FontWeight.w600)),
+                          Text('${date.day}', style: GoogleFonts.dmSerifDisplay(fontSize: 18, color: AppColors.text1)),
+                        ],
+                      ),
+                      if (isToday) ...[
+                        const SizedBox(width: 6),
+                        Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.green2, shape: BoxShape.circle)),
+                      ],
+                    ],
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // Meal rows
-          for (var mealIdx = 0; mealIdx < _mealTypes.length; mealIdx++)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 60,
-                    child: Text(
-                      _mealTypes[mealIdx][0] + _mealTypes[mealIdx].substring(1).toLowerCase(),
-                      style: const TextStyle(color: AppColors.text4, fontSize: 11),
-                    ),
-                  ),
-                  for (var dayIdx = 1; dayIdx <= 7; dayIdx++)
-                    Expanded(child: _SlotCell(slot: _findSlot(dayIdx, _mealTypes[mealIdx]))),
-                ],
-              ),
+                const SizedBox(height: 4),
+                // 3 meal slots
+                for (final mealType in _mealTypes)
+                  _DaySlot(slot: _findSlot(day, mealType), mealType: mealType),
+              ],
             ),
-        ],
+          );
+        }),
       ),
     );
   }
 }
 
-class _SlotCell extends StatelessWidget {
+class _DaySlot extends StatelessWidget {
   final Map<String, dynamic>? slot;
-  const _SlotCell({this.slot});
+  final String mealType;
+  const _DaySlot({this.slot, required this.mealType});
 
   @override
   Widget build(BuildContext context) {
-    if (slot == null) {
-      return Container(
-        margin: const EdgeInsets.all(2),
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.surface2,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.surface2),
-        ),
-        child: const Center(
-          child: Text('—', style: TextStyle(color: AppColors.text4, fontSize: 12)),
+    final emoji = _mealEmojis[mealType] ?? '🍽️';
+    final isEmpty = slot == null;
+
+    if (isEmpty) {
+      return GestureDetector(
+        onTap: () {},
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          height: 70,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.surface2, style: BorderStyle.solid, width: 1.5),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add, color: AppColors.text4, size: 20),
+              const SizedBox(height: 2),
+              Text(mealType, style: TextStyle(color: AppColors.text4, fontSize: 9)),
+            ],
+          ),
         ),
       );
     }
 
-    final name = (slot!['mealName'] as String?) ?? '';
-    final protein = slot!['estimatedProteinGrams'];
-    final perishable = slot!['isPerishablePriority'] == true;
+    final mealName = (slot!['mealName'] as String?) ?? '';
 
-    return Container(
-      margin: const EdgeInsets.all(2),
-      height: 56,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.green1.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            name.length > 10 ? '${name.substring(0, 10)}...' : name,
-            style: const TextStyle(color: AppColors.text1, fontSize: 9, fontWeight: FontWeight.w500),
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              if (protein != null)
-                _MiniBadge(label: '${(protein as num).toInt()}g', color: AppColors.green2),
-              if (perishable)
-                const _MiniBadge(label: '!', color: AppColors.amber1),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _MiniBadge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-class _MissingIngredientsPanel extends StatelessWidget {
-  final List<dynamic> missing;
-  const _MissingIngredientsPanel({required this.missing});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        border: Border(top: BorderSide(color: AppColors.surface2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(S.missingIngredients, style: TextStyle(color: AppColors.amber1, fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          Text('${missing.length} item(s) needed', style: const TextStyle(color: AppColors.text3, fontSize: 12)),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text(S.restockSubmitted)),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.green1,
-                side: const BorderSide(color: AppColors.green1),
+    return GestureDetector(
+      onTap: () => _showSwapPanel(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(8),
+        height: 70,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          boxShadow: AppShadows.xs,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 2),
+            Expanded(
+              child: Text(
+                mealName,
+                style: TextStyle(color: AppColors.text1, fontSize: 10, fontWeight: FontWeight.w500),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              child: const Text(S.approveRestock),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Sprint 23B.8 — slide-up swap panel
+  void _showSwapPanel(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg))),
+      isScrollControlled: true,
+      builder: (_) => _SwapPanel(currentMealName: slot?['mealName'] as String? ?? ''),
+    );
+  }
+}
+
+class _SwapPanel extends StatelessWidget {
+  final String currentMealName;
+  const _SwapPanel({required this.currentMealName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20, right: 20, top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Swap this meal', style: GoogleFonts.dmSerifDisplay(fontSize: 20, color: AppColors.text1)),
+          const SizedBox(height: 4),
+          Text('Currently: $currentMealName', style: TextStyle(color: AppColors.text3, fontSize: 12)),
+          const SizedBox(height: 16),
+          Text('Alternatives', style: TextStyle(color: AppColors.text3, fontSize: 11, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          _AlternativeCard(
+            emoji: '🥘', name: 'Chicken Biryani', score: 88,
+            reason: 'Uses spinach expiring today',
+          ),
+          const SizedBox(height: 8),
+          _AlternativeCard(
+            emoji: '🍝', name: 'Pasta Primavera', score: 82,
+            reason: "Aisha's favourite",
+          ),
+          const SizedBox(height: 8),
+          _AlternativeCard(
+            emoji: '🥗', name: 'Greek Salad', score: 76,
+            reason: 'Quick — ready in 15 minutes',
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Choose my own meal instead', style: TextStyle(color: AppColors.green1, fontSize: 12)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AlternativeCard extends StatelessWidget {
+  final String emoji;
+  final String name;
+  final int score;
+  final String reason;
+  const _AlternativeCard({required this.emoji, required this.name, required this.score, required this.reason});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.surface2),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(name, style: TextStyle(color: AppColors.text1, fontSize: 14, fontWeight: FontWeight.w600))),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: AppColors.green4, borderRadius: BorderRadius.circular(AppRadius.full)),
+                        child: Text('$score%', style: TextStyle(color: AppColors.green1, fontSize: 10, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(reason, style: TextStyle(color: AppColors.text3, fontSize: 11)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

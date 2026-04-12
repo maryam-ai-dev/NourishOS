@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/app_theme.dart';
 import '../config/strings.dart';
+import 'app_card.dart';
 
 class SavingsHeroCard extends StatelessWidget {
   final double savedGbp;
@@ -26,85 +27,80 @@ class SavingsHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Container(
-        height: 180,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFF1A4731), Color(0xFF2D6A4F), Color(0xFF52B788)],
+      return AppCard(
+        child: SizedBox(
+          height: 140,
+          child: Center(
+            child: Text(S.calculatingSavings, style: TextStyle(color: AppColors.text3, fontSize: 13)),
           ),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        child: Center(child: Text(S.calculatingSavings, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14))),
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF1A4731), Color(0xFF2D6A4F), Color(0xFF52B788)],
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Stack(
+    final improved = savedGbp > previousWeekGbp;
+    final totalItems = wasteItems + previousWasteItems; // simple derived total
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Decorative circles
-          Positioned(top: -20, right: -20, child: Container(width: 80, height: 80, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.06)))),
-          Positioned(bottom: -30, left: -10, child: Container(width: 60, height: 60, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.04)))),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(S.savingsTitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('\u00a3', style: GoogleFonts.dmSans(fontSize: 20, color: Colors.white.withValues(alpha: 0.75))),
-                    Text(savedGbp.toStringAsFixed(2), style: GoogleFonts.dmSerifDisplay(fontSize: 42, color: Colors.white, height: 1)),
-                  ],
+          // Saved this week
+          Text(S.savingsTitle, style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 6),
+          // £X.XX in large DM Serif Display
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text('\u00a3', style: GoogleFonts.dmSans(fontSize: 22, color: AppColors.green1, fontWeight: FontWeight.w500)),
+              ),
+              Text(
+                savedGbp.toStringAsFixed(2),
+                style: GoogleFonts.dmSerifDisplay(fontSize: 48, color: AppColors.green1, height: 1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // X of Y items wasted this week
+          Text(
+            totalItems > 0
+                ? '$wasteItems of $totalItems items wasted this week'
+                : '$wasteItems items wasted this week',
+            style: TextStyle(color: AppColors.text2, fontSize: 13),
+          ),
+          const SizedBox(height: 4),
+          // Comparison line
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                improved ? Icons.trending_down : Icons.trending_up,
+                size: 14,
+                color: improved ? AppColors.green1 : AppColors.amber1,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                improved ? 'better than last week' : 'more than last week',
+                style: TextStyle(
+                  color: improved ? AppColors.green1 : AppColors.amber1,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(height: 4),
-                Text('${S.vsLastWeek} \u00a3${previousWeekGbp.toStringAsFixed(2)}',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
-                const SizedBox(height: 12),
-                Divider(color: Colors.white.withValues(alpha: 0.15), height: 1),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _Stat(label: S.itemsWasted, value: '$wasteItems', prev: '$previousWasteItems'),
-                    _Stat(label: S.mealsCompleted, value: '${(mealsCompletedRate * 100).toInt()}%'),
-                    _Stat(label: S.totalSpent, value: '\u00a3${totalSpent.toStringAsFixed(0)}'),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(color: AppColors.surface2, height: 1),
+          const SizedBox(height: 12),
+          // £X spent this week
+          Text(
+            '\u00a3${totalSpent.toStringAsFixed(2)} spent this week',
+            style: TextStyle(color: AppColors.text3, fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final String label;
-  final String value;
-  final String? prev;
-  const _Stat({required this.label, required this.value, this.prev});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-        if (prev != null) Text('from $prev', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
-      ],
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../config/app_theme.dart';
 import '../config/strings.dart';
 
@@ -79,6 +80,55 @@ class PantryScreen extends ConsumerWidget {
               // Alert banner
               _AlertBanner(lots: lots),
               const SizedBox(height: 12),
+              // Sprint 23B.19: Add items section
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => context.push('/pantry/receipt-confirm'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.green3, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('📷', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 6),
+                            Text('Scan receipt', style: TextStyle(color: AppColors.green1, fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.surface2),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('✏️', style: TextStyle(fontSize: 14)),
+                            const SizedBox(width: 6),
+                            Text('Add manually', style: TextStyle(color: AppColors.text2, fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               _ZoneSection(title: S.fridge, icon: Icons.kitchen, lots: fridge),
               _ZoneSection(title: S.freezer, icon: Icons.ac_unit, lots: freezer),
               _ZoneSection(title: S.pantry, icon: Icons.shelves, lots: pantry),
@@ -90,6 +140,39 @@ class PantryScreen extends ConsumerWidget {
                     child: Text(S.noPantryItems, style: TextStyle(color: AppColors.text4, fontSize: 16)),
                   ),
                 ),
+              // Sprint 23B.21: Smart fridge placeholder
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🧊', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Text('Pair a smart fridge', style: TextStyle(color: AppColors.text2, fontSize: 13, fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadius.full)),
+                              child: Text('Coming soon', style: TextStyle(color: AppColors.text3, fontSize: 9, fontWeight: FontWeight.w500)),
+                            ),
+                          ]),
+                          const SizedBox(height: 2),
+                          Text('Auto-track your inventory without scanning', style: TextStyle(color: AppColors.text3, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           );
         },

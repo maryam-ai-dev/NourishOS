@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/app_theme.dart';
 import '../config/strings.dart';
 import '../providers/providers.dart';
 import '../widgets/savings_hero_card.dart';
+import '../widgets/meal_hero_card.dart';
 import '../widgets/budget_bar_card.dart';
-import '../widgets/agent_nudge_card.dart';
-import '../widgets/app_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -33,7 +33,7 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   Container(
                     width: 36, height: 36,
-                    decoration: BoxDecoration(color: AppColors.green4, shape: BoxShape.circle),
+                    decoration: const BoxDecoration(color: AppColors.green4, shape: BoxShape.circle),
                     child: const Center(child: Text('🌿', style: TextStyle(fontSize: 18))),
                   ),
                   const SizedBox(width: 10),
@@ -50,7 +50,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              // Savings hero
+              // Savings hero (white + green)
               const SavingsHeroCard(
                 savedGbp: 4.20,
                 previousWeekGbp: 2.80,
@@ -61,80 +61,75 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // Budget bar
-              const BudgetBarCard(
+              // Meal hero
+              MealHeroCard(
+                mealName: 'Grilled Chicken & Rice',
+                matchScore: 92,
+                memberCount: 3,
+                emoji: '🍗',
+                hasExpiringIngredient: true,
+                expiringNote: 'Uses spinach expiring today',
+                onStartCooking: () => context.go('/cooking'),
+              ),
+              const SizedBox(height: 12),
+
+              // Simplified budget bar
+              BudgetBarCard(
                 weeklyLimit: 80,
                 totalSpent: 42,
                 spentPercent: 0.525,
-                categories: [
-                  BudgetCategory(name: 'Groceries', spent: 28),
-                  BudgetCategory(name: 'Pantry', spent: 10),
-                  BudgetCategory(name: 'Other', spent: 4),
-                ],
+                onTap: () {},
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
-              // Agent nudge
-              const AgentNudgeCard(
-                nudgeType: 'GENERAL',
-                message: 'Plan this week\'s meals to keep waste low.',
-              ),
-              const SizedBox(height: 12),
-
-              // Health tiles
+              // Status pills (subtle, at bottom)
               Row(
                 children: [
-                  Expanded(child: _HealthTile(
+                  Expanded(child: _StatusPill(
                     emoji: '⚠️',
                     count: expiring.whenOrNull(data: (items) => items.length) ?? 0,
                     label: S.expiringSoon,
-                    variant: _TileVariant.alert,
+                    variant: _PillVariant.alert,
                   )),
                   const SizedBox(width: 8),
-                  Expanded(child: _HealthTile(
+                  Expanded(child: _StatusPill(
                     emoji: '📦',
                     count: lowStock.whenOrNull(data: (items) => items.length) ?? 0,
                     label: S.lowStock,
-                    variant: _TileVariant.warn,
+                    variant: _PillVariant.warn,
                   )),
                   const SizedBox(width: 8),
-                  Expanded(child: _HealthTile(
+                  Expanded(child: _StatusPill(
                     emoji: '✅',
                     count: 0,
                     label: S.allGood,
-                    variant: _TileVariant.healthy,
+                    variant: _PillVariant.healthy,
                   )),
                 ],
               ),
               const SizedBox(height: 12),
 
-              // Meal card
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Meal image area
-                    Container(
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [AppColors.green3, AppColors.green2]),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: const Center(child: Text('🍽️', style: TextStyle(fontSize: 32))),
+              // Insights chip (bottom right)
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () => context.go('/insights'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      border: Border.all(color: AppColors.green3, width: 1),
                     ),
-                    const SizedBox(height: 10),
-                    Text(S.tonightsRecommendation, style: TextStyle(color: AppColors.text3, fontSize: 11)),
-                    const SizedBox(height: 2),
-                    Text('Grilled Chicken & Rice', style: TextStyle(color: AppColors.text1, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2)),
-                    const SizedBox(height: 8),
-                    Row(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _Chip(label: '32g protein'),
-                        const SizedBox(width: 6),
-                        _Chip(label: '4 servings'),
+                        Text('View insights', style: TextStyle(color: AppColors.green1, fontSize: 11, fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward, size: 12, color: AppColors.green1),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -145,54 +140,40 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-enum _TileVariant { alert, warn, healthy }
+enum _PillVariant { alert, warn, healthy }
 
-class _HealthTile extends StatelessWidget {
+class _StatusPill extends StatelessWidget {
   final String emoji;
   final int count;
   final String label;
-  final _TileVariant variant;
+  final _PillVariant variant;
 
-  const _HealthTile({required this.emoji, required this.count, required this.label, required this.variant});
+  const _StatusPill({required this.emoji, required this.count, required this.label, required this.variant});
 
   @override
   Widget build(BuildContext context) {
-    final (bg, border) = switch (variant) {
-      _TileVariant.alert when count > 0 => (AppColors.red3, AppColors.red3),
-      _TileVariant.warn when count > 0 => (AppColors.amber3, AppColors.amber3),
-      _ => (AppColors.surface, Colors.transparent),
+    final (bg, fg) = switch (variant) {
+      _PillVariant.alert when count > 0 => (AppColors.red3, AppColors.red1),
+      _PillVariant.warn when count > 0 => (AppColors.amber3, AppColors.amber1),
+      _ => (AppColors.surface, AppColors.text3),
     };
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: border.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         boxShadow: AppShadows.xs,
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(height: 4),
-          Text('$count', style: TextStyle(color: AppColors.text1, fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.4)),
-          Text(label, style: TextStyle(color: AppColors.text3, fontSize: 10, fontWeight: FontWeight.w500)),
+          Text(emoji, style: const TextStyle(fontSize: 14)),
+          const SizedBox(height: 2),
+          Text('$count', style: TextStyle(color: fg, fontSize: 15, fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(color: fg.withValues(alpha: 0.8), fontSize: 9, fontWeight: FontWeight.w500)),
         ],
       ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
-  const _Chip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(AppRadius.full)),
-      child: Text(label, style: TextStyle(color: AppColors.text2, fontSize: 11, fontWeight: FontWeight.w500)),
     );
   }
 }

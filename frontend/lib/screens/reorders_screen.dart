@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../config/app_theme.dart';
 import '../config/strings.dart';
+
+// Sprint 23B.22: Shopping mode toggle
+enum ShoppingMode { inStore, online }
+final shoppingModeProvider = StateProvider<ShoppingMode>((ref) => ShoppingMode.inStore);
 
 /// Demo suggestion data. In production, fetched from Spring Boot GET /replenishment/suggestions.
 class _Suggestion {
@@ -47,6 +52,10 @@ class ReordersScreen extends ConsumerWidget {
     final suggestions = ref.watch(reorderSuggestionsProvider);
     final pending = suggestions.where((s) => s.status == 'PENDING').toList();
 
+    final mode = ref.watch(shoppingModeProvider);
+    final approved = suggestions.where((s) => s.status == 'APPROVED').toList();
+    final hasApproved = approved.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(S.reordersTitle),
@@ -58,18 +67,100 @@ class ReordersScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: suggestions.isEmpty
-          ? const Center(child: Text(S.noSuggestions, style: TextStyle(color: AppColors.text4, fontSize: 16)))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: suggestions.length,
-              itemBuilder: (context, index) => _SuggestionCard(
-                suggestion: suggestions[index],
-                onApprove: () => _updateStatus(ref, suggestions, index, 'APPROVED'),
-                onReject: () => _updateStatus(ref, suggestions, index, 'REJECTED'),
-                onDefer: () => _updateStatus(ref, suggestions, index, 'DEFERRED'),
+      body: Column(
+        children: [
+          // Sprint 23B.22: Mode toggle
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.surface2,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: _modeTab(ref, ShoppingMode.inStore, mode, '🛒 Shop in store')),
+                  Expanded(child: _modeTab(ref, ShoppingMode.online, mode, '📦 Order online')),
+                ],
               ),
             ),
+          ),
+          Expanded(
+            child: suggestions.isEmpty
+                ? const Center(child: Text(S.noSuggestions, style: TextStyle(color: AppColors.text4, fontSize: 16)))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: suggestions.length,
+                    itemBuilder: (context, index) => _SuggestionCard(
+                      suggestion: suggestions[index],
+                      onApprove: () => _updateStatus(ref, suggestions, index, 'APPROVED'),
+                      onReject: () => _updateStatus(ref, suggestions, index, 'REJECTED'),
+                      onDefer: () => _updateStatus(ref, suggestions, index, 'DEFERRED'),
+                    ),
+                  ),
+          ),
+          // Sprint 23B.23 / 23B.25: Mode-specific action button
+          if (hasApproved)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (mode == ShoppingMode.inStore) {
+                      context.push('/reorders/shopping-list');
+                    } else {
+                      context.push('/reorders/basket');
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  child: Text(
+                    mode == ShoppingMode.inStore ? 'Go shopping →' : 'Build my basket →',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ),
+          if (mode == ShoppingMode.online && !hasApproved)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => context.push('/reorders/supermarkets'),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: AppColors.green1),
+                    foregroundColor: AppColors.green1,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Connect a supermarket →', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeTab(WidgetRef ref, ShoppingMode value, ShoppingMode selected, String label) {
+    final isActive = value == selected;
+    return GestureDetector(
+      onTap: () => ref.read(shoppingModeProvider.notifier).state = value,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          boxShadow: isActive ? AppShadows.xs : null,
+        ),
+        child: Center(
+          child: Text(label, style: TextStyle(
+            color: isActive ? AppColors.text1 : AppColors.text3,
+            fontSize: 12, fontWeight: FontWeight.w600,
+          )),
+        ),
+      ),
     );
   }
 

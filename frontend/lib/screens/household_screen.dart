@@ -1,235 +1,236 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/providers.dart';
-import '../models/household.dart';
-import '../services/authority_service.dart';
-import '../services/service_exception.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/app_theme.dart';
+import '../providers/providers.dart';
+import '../widgets/app_card.dart';
 
-class HouseholdScreen extends ConsumerStatefulWidget {
+class HouseholdScreen extends ConsumerWidget {
   const HouseholdScreen({super.key});
 
   @override
-  ConsumerState<HouseholdScreen> createState() => _HouseholdScreenState();
-}
-
-class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
-  String? _householdId;
-
-  @override
-  Widget build(BuildContext context) {
-    final String id = _householdId ?? ref.watch(householdIdProvider) ?? '';
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id = ref.watch(householdIdProvider);
+    final hasHousehold = id.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Household'),
-      ),
-      body: id.isEmpty
-          ? const Center(child: Text('No household selected', style: TextStyle(color: AppColors.text3)))
-          : _MembersList(householdId: id),
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(title: const Text('Household')),
+      body: hasHousehold ? _MemberList(householdId: id) : const _EmptyState(),
     );
   }
 }
 
-class _MembersList extends ConsumerWidget {
+// --- Sprint 23B.9: Empty state ---
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 120, height: 120,
+            decoration: const BoxDecoration(color: AppColors.green5, shape: BoxShape.circle),
+            child: const Center(child: Text('👨‍👩‍👧', style: TextStyle(fontSize: 56))),
+          ),
+          const SizedBox(height: 24),
+          Text('Set up your household', style: GoogleFonts.dmSerifDisplay(fontSize: 24, color: AppColors.text1), textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          Text(
+            "We'll learn what each person loves to eat, what they can't, and plan meals everyone enjoys.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.text3, fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => context.push('/household/onboarding'),
+              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: const Text('Add your household', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () => context.go('/'),
+            child: Text("I'll do this later", style: TextStyle(color: AppColors.text3, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Sprint 23B.10: Member list ---
+class _MemberList extends ConsumerWidget {
   final String householdId;
-  const _MembersList({required this.householdId});
+  const _MemberList({required this.householdId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final members = ref.watch(membersProvider(householdId));
+    // Demo members — in production from GET /households/{id}/members
+    final members = [
+      {'name': 'Maryam', 'role': 'Adult', 'tags': ['Vegetarian', 'High protein'], 'emoji': '👩'},
+      {'name': 'Ahmed', 'role': 'Adult', 'tags': ['No seafood', 'Loves spicy'], 'emoji': '👨'},
+      {'name': 'Zara', 'role': 'Child', 'tags': ['Nut allergy', 'Pasta fan'], 'emoji': '👧'},
+    ];
 
-    return members.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(
-        child: Text('Error: $err', style: const TextStyle(color: AppColors.red1)),
-      ),
-      data: (memberList) => ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: memberList.length,
-        itemBuilder: (context, index) => _MemberCard(
-          member: memberList[index],
-          householdId: householdId,
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Household header
+        Row(
+          children: [
+            Container(
+              width: 48, height: 48,
+              decoration: const BoxDecoration(color: AppColors.green4, shape: BoxShape.circle),
+              child: const Center(child: Text('🏡', style: TextStyle(fontSize: 22))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('The Yousuf Home', style: GoogleFonts.dmSerifDisplay(fontSize: 20, color: AppColors.text1)),
+                  Text('${members.length} members', style: TextStyle(color: AppColors.text3, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Member cards
+        ...members.map((m) => _MemberCard(
+          name: m['name'] as String,
+          role: m['role'] as String,
+          tags: m['tags'] as List<String>,
+          emoji: m['emoji'] as String,
+        )),
+
+        const SizedBox(height: 12),
+        // Add another member button
+        GestureDetector(
+          onTap: () => context.push('/household/onboarding'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.green3, width: 1.5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add, color: AppColors.green1, size: 20),
+                const SizedBox(width: 8),
+                Text('Add another member', style: TextStyle(color: AppColors.green1, fontSize: 14, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+        // Smart fridge coming soon (Sprint 23B.21 — appears here too)
+        _SmartFridgePlaceholder(),
+      ],
+    );
+  }
+}
+
+class _MemberCard extends StatelessWidget {
+  final String name;
+  final String role;
+  final List<String> tags;
+  final String emoji;
+
+  const _MemberCard({required this.name, required this.role, required this.tags, required this.emoji});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        child: Row(
+          children: [
+            Container(
+              width: 48, height: 48,
+              decoration: const BoxDecoration(color: AppColors.green5, shape: BoxShape.circle),
+              child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Text(name, style: TextStyle(color: AppColors.text1, fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(AppRadius.full)),
+                      child: Text(role, style: TextStyle(color: AppColors.text3, fontSize: 10, fontWeight: FontWeight.w500)),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 4, runSpacing: 4,
+                    children: tags.take(3).map((t) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.green5, borderRadius: BorderRadius.circular(AppRadius.full)),
+                      child: Text(t, style: TextStyle(color: AppColors.green1, fontSize: 10, fontWeight: FontWeight.w500)),
+                    )).toList(),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: AppColors.text4, size: 20),
+          ],
         ),
       ),
     );
   }
 }
 
-class _MemberCard extends StatelessWidget {
-  final HouseholdMember member;
-  final String householdId;
-
-  const _MemberCard({required this.member, required this.householdId});
-
+// --- Sprint 23B.21: Smart fridge placeholder (used on pantry too) ---
+class _SmartFridgePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surface2),
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Text(
-                member.displayName,
-                style: const TextStyle(color: AppColors.text1, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(width: 8),
-              _Badge(label: member.ageGroup, color: member.ageGroup == 'CHILD' ? AppColors.green1 : AppColors.green2),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (member.effortSensitivity != null)
-            Text('Effort: ${member.effortSensitivity}', style: const TextStyle(color: AppColors.text3, fontSize: 13)),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => _showPreferenceEditor(context),
-              child: const Text('Edit Preferences', style: TextStyle(color: AppColors.green1)),
+          const Text('🧊', style: TextStyle(fontSize: 24)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Text('Pair a smart fridge', style: TextStyle(color: AppColors.text2, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadius.full)),
+                    child: Text('Coming soon', style: TextStyle(color: AppColors.text3, fontSize: 9, fontWeight: FontWeight.w500)),
+                  ),
+                ]),
+                const SizedBox(height: 2),
+                Text('Auto-track your inventory without scanning', style: TextStyle(color: AppColors.text3, fontSize: 11)),
+              ],
             ),
           ),
         ],
       ),
     );
-  }
-
-  void _showPreferenceEditor(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface2,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => _PreferenceForm(householdId: householdId, memberId: member.id, memberName: member.displayName),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Badge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-class _PreferenceForm extends StatefulWidget {
-  final String householdId;
-  final String memberId;
-  final String memberName;
-
-  const _PreferenceForm({required this.householdId, required this.memberId, required this.memberName});
-
-  @override
-  State<_PreferenceForm> createState() => _PreferenceFormState();
-}
-
-class _PreferenceFormState extends State<_PreferenceForm> {
-  final _proteinController = TextEditingController();
-  String? _proteinError;
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _proteinController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16, right: 16, top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Preferences — ${widget.memberName}',
-            style: const TextStyle(color: AppColors.text1, fontSize: 18, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _proteinController,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(color: AppColors.text1),
-            decoration: InputDecoration(
-              labelText: 'Protein goal (g)',
-              labelStyle: const TextStyle(color: AppColors.text3),
-              errorText: _proteinError,
-              enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.text4)),
-              focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.green1)),
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Save'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _save() async {
-    final proteinText = _proteinController.text.trim();
-    if (proteinText.isNotEmpty) {
-      final val = double.tryParse(proteinText);
-      if (val == null || val < 0) {
-        setState(() => _proteinError = 'Must be a positive number');
-        return;
-      }
-    }
-    setState(() {
-      _proteinError = null;
-      _saving = true;
-    });
-
-    try {
-      final prefs = <String, dynamic>{};
-      if (proteinText.isNotEmpty) {
-        prefs['proteinTarget'] = double.parse(proteinText);
-      }
-      await AuthorityService().updatePreferences(widget.householdId, widget.memberId, prefs);
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Preferences saved')),
-        );
-      }
-    } on ServiceException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.message}')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
   }
 }
