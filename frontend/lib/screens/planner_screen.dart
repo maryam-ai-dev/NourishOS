@@ -3,9 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/app_theme.dart';
 import '../config/strings.dart';
-import '../services/intelligence_service.dart';
-import '../services/service_exception.dart';
 import '../providers/providers.dart';
+
+/// Resolves what a slot looks like for the selected member: their override
+/// if one exists for this slot, otherwise the shared household meal.
+Map<String, dynamic> _resolveForMember(Map<String, dynamic> slot, String? member) {
+  final overrides = slot['overrides'] as Map<String, dynamic>? ?? const {};
+  final override = member != null ? overrides[member] as Map<String, dynamic>? : null;
+  if (override == null) return slot;
+  return {
+    ...slot,
+    'mealName': override['mealName'],
+    'emoji': override['emoji'],
+    'customReason': override['reason'],
+  };
+}
 
 const _mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
 const _mealEmojis = {'Breakfast': '🍳', 'Lunch': '🥗', 'Dinner': '🍽️'};
@@ -28,6 +40,7 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
     final proposal = ref.watch(weeklyPlanProposalProvider);
     final slots = (proposal?['slots'] as List?) ?? [];
     final hasPlan = slots.isNotEmpty;
+    final selectedMember = ref.watch(selectedMemberProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(S.plannerTitle)),
@@ -36,7 +49,7 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
           // Member filter chips (Sprint 23B.6)
           _MemberFilterChips(),
           // Horizontal scrolling day grid (Sprint 23B.5)
-          Expanded(child: _HorizontalPlannerGrid(slots: slots)),
+          Expanded(child: _HorizontalPlannerGrid(slots: slots, selectedMember: selectedMember)),
           // Generate / Regenerate button (Sprint 23B.7)
           Padding(
             padding: const EdgeInsets.all(16),
@@ -73,22 +86,15 @@ class _WeeklyPlannerScreenState extends ConsumerState<WeeklyPlannerScreen> {
 
   Future<void> _generatePlan() async {
     setState(() => _generating = true);
-    try {
-      final householdId = ref.read(householdIdProvider);
-      final now = DateTime.now();
-      final monday = now.subtract(Duration(days: now.weekday - 1));
-      final result = await IntelligenceService().planWeekly({
-        'householdId': householdId,
-        'weekStartDate': '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}',
-      });
-      ref.read(weeklyPlanProposalProvider.notifier).state = result;
-    } on ServiceException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${S.error}: ${e.message}')));
-      }
-    } finally {
-      if (mounted) setState(() => _generating = false);
-    }
+    // Demo deployment: no backend attached, so we simulate the planner's
+    // "thinking" delay and return a locally-generated weekly plan.
+    await Future.delayed(const Duration(milliseconds: 900));
+    final householdId = ref.read(householdIdProvider);
+    ref.read(weeklyPlanProposalProvider.notifier).state = {
+      'householdId': householdId,
+      'slots': demoWeeklySlots(shuffle: true),
+    };
+    if (mounted) setState(() => _generating = false);
   }
 }
 
@@ -142,12 +148,15 @@ class _MemberFilterChips extends ConsumerWidget {
 // --- Sprint 23B.5: Horizontal scrolling planner grid ---
 class _HorizontalPlannerGrid extends StatelessWidget {
   final List<dynamic> slots;
-  const _HorizontalPlannerGrid({required this.slots});
+  final String? selectedMember;
+  const _HorizontalPlannerGrid({required this.slots, this.selectedMember});
 
   Map<String, dynamic>? _findSlot(int day, String mealType) {
     final mt = mealType.toUpperCase();
     for (final s in slots) {
-      if (s['day'] == day && s['mealType'] == mt) return s as Map<String, dynamic>;
+      if (s['day'] == day && s['mealType'] == mt) {
+        return _resolveForMember(s as Map<String, dynamic>, selectedMember);
+      }
     }
     return null;
   }
@@ -240,6 +249,8 @@ class _DaySlot extends StatelessWidget {
     }
 
     final mealName = (slot!['mealName'] as String?) ?? '';
+    final customReason = slot!['customReason'] as String?;
+    final isCustom = customReason != null;
 
     return GestureDetector(
       onTap: () => _showSwapPanel(context),
@@ -251,11 +262,23 @@ class _DaySlot extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.sm),
           boxShadow: AppShadows.xs,
+          border: isCustom ? Border.all(color: AppColors.green2, width: 1.2) : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 14)),
+            Row(
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 14)),
+                if (isCustom) ...[
+                  const Spacer(),
+                  Tooltip(
+                    message: customReason,
+                    child: const Text('👤', style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ],
+            ),
             const SizedBox(height: 2),
             Expanded(
               child: Text(

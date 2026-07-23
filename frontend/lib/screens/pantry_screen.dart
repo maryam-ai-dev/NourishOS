@@ -16,21 +16,35 @@ class _Lot {
   final bool isDepleted;
   final String? purchasedAt;
   final bool isRecurringWaste;
-  final bool belowParLevel;
+  final double? minQuantity; // par level — quantity below this is LOW
 
   _Lot({
     required this.id, required this.ingredientName, required this.quantity,
     required this.unit, required this.location, required this.freshness,
     this.isOpen = false, this.isDepleted = false, this.purchasedAt,
-    this.isRecurringWaste = false, this.belowParLevel = false,
+    this.isRecurringWaste = false, this.minQuantity,
   });
+
+  bool get belowParLevel => minQuantity != null && quantity < minQuantity!;
+
+  _Lot copyWith({
+    double? quantity, bool? isOpen, bool? isDepleted,
+    bool? isRecurringWaste, double? minQuantity,
+  }) => _Lot(
+    id: id, ingredientName: ingredientName,
+    quantity: quantity ?? this.quantity, unit: unit, location: location,
+    freshness: freshness, isOpen: isOpen ?? this.isOpen,
+    isDepleted: isDepleted ?? this.isDepleted, purchasedAt: purchasedAt,
+    isRecurringWaste: isRecurringWaste ?? this.isRecurringWaste,
+    minQuantity: minQuantity ?? this.minQuantity,
+  );
 }
 
-/// Demo data provider (in production, fetched from Spring Boot).
-final pantryLotsProvider = FutureProvider<List<_Lot>>((ref) async {
-  // In production: call AuthorityService().getInventorySnapshot()
-  // For now, return demo data to prove the UI structure works
-  return [
+/// Mutable in-memory pantry state (in production, fetched from / persisted
+/// to Spring Boot). This is a demo-mode stand-in so "add manually", the par
+/// level form, and opened/waste actions all actually change what's shown.
+class _PantryLotsNotifier extends StateNotifier<List<_Lot>> {
+  _PantryLotsNotifier() : super([
     _Lot(id: '1', ingredientName: 'Chicken Breast', quantity: 400, unit: 'g',
          location: 'FRIDGE', freshness: 'NEAR_EXPIRY', purchasedAt: '2026-04-07'),
     _Lot(id: '2', ingredientName: 'Spinach', quantity: 100, unit: 'g',
@@ -38,29 +52,58 @@ final pantryLotsProvider = FutureProvider<List<_Lot>>((ref) async {
     _Lot(id: '3', ingredientName: 'Frozen Peas', quantity: 500, unit: 'g',
          location: 'FREEZER', freshness: 'FRESH'),
     _Lot(id: '4', ingredientName: 'Rice', quantity: 200, unit: 'g',
-         location: 'PANTRY', freshness: 'FRESH', belowParLevel: true),
+         location: 'PANTRY', freshness: 'FRESH', minQuantity: 250),
     _Lot(id: '5', ingredientName: 'Olive Oil', quantity: 150, unit: 'ml',
          location: 'PANTRY', freshness: 'FRESH', isOpen: true),
     _Lot(id: '6', ingredientName: 'Expired Yogurt', quantity: 0, unit: 'g',
          location: 'FRIDGE', freshness: 'EXPIRED', isDepleted: true),
-  ];
-});
+  ]);
+
+  int _nextId = 7;
+
+  void add({required String name, required double quantity, required String unit, required String location}) {
+    state = [
+      ...state,
+      _Lot(
+        id: '${_nextId++}', ingredientName: name, quantity: quantity, unit: unit,
+        location: location, freshness: 'FRESH',
+        purchasedAt: 'Just now',
+      ),
+    ];
+  }
+
+  void setParLevel(String id, double minQuantity) {
+    state = [for (final l in state) if (l.id == id) l.copyWith(minQuantity: minQuantity) else l];
+  }
+
+  void toggleOpened(String id) {
+    state = [for (final l in state) if (l.id == id) l.copyWith(isOpen: !l.isOpen) else l];
+  }
+
+  void markUsedUp(String id) {
+    state = [for (final l in state) if (l.id == id) l.copyWith(isDepleted: true, quantity: 0) else l];
+  }
+
+  void logWaste(String id) {
+    state = [for (final l in state) if (l.id == id) l.copyWith(isDepleted: true, isRecurringWaste: true) else l];
+  }
+}
+
+final pantryLotsProvider = StateNotifierProvider<_PantryLotsNotifier, List<_Lot>>((ref) => _PantryLotsNotifier());
 
 class PantryScreen extends ConsumerWidget {
   const PantryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lotsAsync = ref.watch(pantryLotsProvider);
+    final lots = ref.watch(pantryLotsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(S.pantryTitle),
       ),
-      body: lotsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.red1))),
-        data: (lots) {
+      body: Builder(
+        builder: (context) {
           final fridge = lots.where((l) => l.location == 'FRIDGE' && !l.isDepleted).toList();
           final freezer = lots.where((l) => l.location == 'FREEZER' && !l.isDepleted).toList();
           final pantry = lots.where((l) => l.location == 'PANTRY' && !l.isDepleted).toList();
@@ -107,7 +150,7 @@ class PantryScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {},
+                      onTap: () => _showAddManuallyForm(context, ref),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
@@ -179,6 +222,133 @@ class PantryScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showAddManuallyForm(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface2,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => _AddManuallyForm(
+        onAdd: (name, quantity, unit, location) {
+          ref.read(pantryLotsProvider.notifier).add(name: name, quantity: quantity, unit: unit, location: location);
+        },
+      ),
+    );
+  }
+}
+
+class _AddManuallyForm extends StatefulWidget {
+  final void Function(String name, double quantity, String unit, String location) onAdd;
+  const _AddManuallyForm({required this.onAdd});
+
+  @override
+  State<_AddManuallyForm> createState() => _AddManuallyFormState();
+}
+
+class _AddManuallyFormState extends State<_AddManuallyForm> {
+  final _nameCtrl = TextEditingController();
+  final _qtyCtrl = TextEditingController();
+  final _unitCtrl = TextEditingController(text: 'g');
+  String _location = 'FRIDGE';
+  String? _error;
+
+  @override
+  void dispose() { _nameCtrl.dispose(); _qtyCtrl.dispose(); _unitCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(left: 16, right: 16, top: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Add item', style: TextStyle(color: AppColors.text1, fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _nameCtrl,
+            style: const TextStyle(color: AppColors.text1),
+            decoration: const InputDecoration(
+              labelText: 'Ingredient name',
+              labelStyle: TextStyle(color: AppColors.text3),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.text4)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.green1)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _qtyCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: AppColors.text1),
+                  decoration: const InputDecoration(
+                    labelText: 'Quantity',
+                    labelStyle: TextStyle(color: AppColors.text3),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.text4)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.green1)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _unitCtrl,
+                  style: const TextStyle(color: AppColors.text1),
+                  decoration: const InputDecoration(
+                    labelText: 'Unit',
+                    labelStyle: TextStyle(color: AppColors.text3),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.text4)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.green1)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final loc in ['FRIDGE', 'FREEZER', 'PANTRY'])
+                ChoiceChip(
+                  label: Text(loc),
+                  selected: _location == loc,
+                  onSelected: (_) => setState(() => _location = loc),
+                ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: AppColors.red1, fontSize: 12)),
+          ],
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _save,
+              child: const Text('Add to pantry'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _save() {
+    final name = _nameCtrl.text.trim();
+    final qty = double.tryParse(_qtyCtrl.text.trim());
+    final unit = _unitCtrl.text.trim();
+
+    if (name.isEmpty || qty == null || qty <= 0 || unit.isEmpty) {
+      setState(() => _error = 'Enter a name, a positive quantity, and a unit');
+      return;
+    }
+
+    widget.onAdd(name, qty, unit, _location);
+    Navigator.of(context).pop();
+  }
 }
 
 class _AlertBanner extends StatelessWidget {
@@ -247,12 +417,12 @@ class _ZoneSection extends StatelessWidget {
   }
 }
 
-class _LotCard extends StatelessWidget {
+class _LotCard extends ConsumerWidget {
   final _Lot lot;
   const _LotCard({required this.lot});
 
-  Color get _freshnessColor {
-    switch (lot.freshness) {
+  Color _freshnessColor(String freshness) {
+    switch (freshness) {
       case 'EXPIRED': return AppColors.red1;
       case 'NEAR_EXPIRY': return AppColors.amber1;
       default: return AppColors.green2;
@@ -260,9 +430,9 @@ class _LotCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      onLongPress: () => _showParLevelEditor(context),
+      onLongPress: () => _showParLevelEditor(context, ref),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
@@ -287,10 +457,28 @@ class _LotCard extends StatelessWidget {
             Wrap(
               spacing: 4,
               children: [
-                _FreshBadge(label: lot.freshness, color: _freshnessColor),
+                _FreshBadge(label: lot.freshness, color: _freshnessColor(lot.freshness)),
                 if (lot.isOpen) const _FreshBadge(label: 'OPENED', color: AppColors.green2),
                 if (lot.isRecurringWaste) const _FreshBadge(label: 'WASTE', color: AppColors.red1),
                 if (lot.belowParLevel) const _FreshBadge(label: 'LOW', color: AppColors.amber1),
+              ],
+            ),
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: AppColors.text4, size: 18),
+              onSelected: (action) {
+                final notifier = ref.read(pantryLotsProvider.notifier);
+                switch (action) {
+                  case 'opened': notifier.toggleOpened(lot.id); break;
+                  case 'used_up': notifier.markUsedUp(lot.id); break;
+                  case 'waste': notifier.logWaste(lot.id); break;
+                  case 'par_level': _showParLevelEditor(context, ref); break;
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'opened', child: Text(lot.isOpen ? 'Mark unopened' : 'Mark opened')),
+                const PopupMenuItem(value: 'used_up', child: Text('Mark used up')),
+                const PopupMenuItem(value: 'waste', child: Text('Log as wasted')),
+                const PopupMenuItem(value: 'par_level', child: Text('Set usual amount')),
               ],
             ),
           ],
@@ -299,12 +487,15 @@ class _LotCard extends StatelessWidget {
     );
   }
 
-  void _showParLevelEditor(BuildContext context) {
+  void _showParLevelEditor(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface2,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => _ParLevelForm(ingredientName: lot.ingredientName, lotId: lot.id),
+      builder: (_) => _ParLevelForm(
+        ingredientName: lot.ingredientName,
+        onSave: (minVal) => ref.read(pantryLotsProvider.notifier).setParLevel(lot.id, minVal),
+      ),
     );
   }
 }
@@ -326,8 +517,8 @@ class _FreshBadge extends StatelessWidget {
 
 class _ParLevelForm extends StatefulWidget {
   final String ingredientName;
-  final String lotId;
-  const _ParLevelForm({required this.ingredientName, required this.lotId});
+  final void Function(double minQuantity) onSave;
+  const _ParLevelForm({required this.ingredientName, required this.onSave});
 
   @override
   State<_ParLevelForm> createState() => _ParLevelFormState();
@@ -406,8 +597,8 @@ class _ParLevelFormState extends State<_ParLevelForm> {
     }
     setState(() => _error = null);
 
-    // In production: call AuthorityService PUT /households/{id}/par-levels/{ingredientId}
+    widget.onSave(minVal);
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Par level saved')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Usual amount saved — you\'ll see LOW once stock drops below $minVal')));
   }
 }
