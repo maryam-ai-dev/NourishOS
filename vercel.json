@@ -1,5 +1,5 @@
 {
-  "buildCommand": "git clone https://github.com/flutter/flutter.git -b stable --depth 1 _flutter && export PATH=\"$PATH:$(pwd)/_flutter/bin\" && flutter config --enable-web && cd frontend && flutter pub get && flutter build web --release",
+  "buildCommand": "echo 'Serving prebuilt frontend/build/web — rebuild locally with flutter build web --release and commit before pushing.'",
   "outputDirectory": "frontend/build/web",
   "installCommand": "true",
   "rewrites": [
